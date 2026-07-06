@@ -1,270 +1,272 @@
 <!DOCTYPE html>
-<!-- MTC v1.1 — fix API key, perfil persistente, errores de voz -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MTC — Motor de Traducción Cognitiva</title>
+<!-- MTC v1.2 — login Google obligatorio, perfil persistente, API robusta -->
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<!-- Firebase compat CDN v9 -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0a0e17;
-  --surface:#111827;
-  --surface2:#1a2235;
-  --border:#1e2d47;
-  --text:#e8edf5;
-  --muted:#7a90b0;
-  --accent:#4fd1c5;
-  --accent2:#667eea;
-  --warm:#f6ad55;
-  --danger:#ef4444;
-  --radius:16px;
-  --font-display:'Sora',sans-serif;
-  --font-body:'Inter',sans-serif;
+  --bg:#0a0e17;--surface:#111827;--surface2:#1a2235;
+  --border:#1e2d47;--text:#e8edf5;--muted:#7a90b0;
+  --accent:#4fd1c5;--accent2:#667eea;--warm:#f6ad55;--danger:#ef4444;
+  --radius:16px;--font-display:'Sora',sans-serif;--font-body:'Inter',sans-serif;
 }
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+button{cursor:pointer;font-family:var(--font-body)}
+
+/* ── LOGIN ── */
+#screenLogin{display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;text-align:center}
+#screenLogin.on{display:flex}
+.login-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:4px}
+.login-title{font-family:var(--font-display);font-weight:700;font-size:1.4rem}
+.login-title span{color:var(--accent)}
+.login-sub{font-size:0.82rem;color:var(--muted);max-width:280px;line-height:1.6}
+.btn-google{background:#fff;color:#222;border:none;border-radius:12px;padding:14px 24px;font-size:0.9rem;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 2px 16px rgba(0,0,0,.3);transition:opacity .15s}
+.btn-google:hover{opacity:.9}
+.login-err{color:var(--danger);font-size:0.78rem;min-height:18px}
+
+/* ── APP ── */
+#screenApp{display:none;flex-direction:column;flex:1}
+#screenApp.on{display:flex}
 
 /* ── HEADER ── */
-.header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
-.logo{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
-.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
-.logo-text{font-family:var(--font-display);font-weight:700;font-size:1rem;letter-spacing:-.01em}
+.header{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.logo-text{font-family:var(--font-display);font-weight:700;font-size:0.95rem;letter-spacing:-.01em}
 .logo-text span{color:var(--accent)}
 .header-right{display:flex;align-items:center;gap:8px}
-.nivel-badge{background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 14px;font-size:0.72rem;color:var(--muted);font-weight:500}
-.nivel-badge b{color:var(--accent);font-weight:600}
-.btn-config{background:transparent;border:1.5px solid var(--accent);color:var(--accent);border-radius:999px;padding:5px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all .2s}
+.nivel-badge{background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:4px 12px;font-size:0.7rem;color:var(--muted);font-weight:500}
+.nivel-badge b{color:var(--accent)}
+.btn-config{background:transparent;border:1.5px solid var(--accent);color:var(--accent);border-radius:999px;padding:5px 13px;font-size:0.73rem;font-weight:600;transition:all .2s}
 .btn-config:hover{background:rgba(79,209,197,.1)}
-.btn-config.guardado{border-color:var(--border);color:var(--muted);font-size:0.72rem}
+.btn-config.guardado{border-color:var(--border);color:var(--muted)}
+.user-avatar{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);cursor:pointer}
 
-/* ── PERFIL STRIP ── */
-.perfil-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;gap:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+/* ── BARRAS COGNITIVAS ── */
+.perfil-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:9px 18px;display:flex;gap:14px;overflow-x:auto;scrollbar-width:none}
 .perfil-strip::-webkit-scrollbar{display:none}
-.perfil-item{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px}
-.perfil-bar-wrap{width:40px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.perfil-item{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:58px}
+.perfil-bar-wrap{width:38px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .perfil-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .8s cubic-bezier(.4,0,.2,1)}
-.perfil-label{font-size:0.6rem;color:var(--muted);text-align:center}
+.perfil-label{font-size:0.58rem;color:var(--muted);text-align:center}
 
 /* ── INTERESES ── */
-.intereses-strip{padding:8px 20px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.intereses-strip{padding:7px 18px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .intereses-strip::-webkit-scrollbar{display:none}
-.interes-chip{padding:4px 12px;border-radius:999px;font-size:0.72rem;font-weight:500;border:1.5px solid var(--border);color:var(--muted);white-space:nowrap;transition:all .2s}
+.interes-chip{padding:3px 11px;border-radius:999px;font-size:0.7rem;font-weight:500;border:1.5px solid var(--border);color:var(--muted);white-space:nowrap;transition:all .2s}
 .interes-chip.detected{border-color:var(--accent);color:var(--accent);background:rgba(79,209,197,.08)}
 
 /* ── CHAT ── */
-.chat-area{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:14px;max-width:680px;width:100%;margin:0 auto;overflow-y:auto}
+.chat-area{flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:12px;max-width:680px;width:100%;margin:0 auto;overflow-y:auto}
 .msg{display:flex;gap:10px;animation:fadeUp .3s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .msg.user{flex-direction:row-reverse}
-.msg-avatar{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border)}
+.msg-avatar{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border)}
 .msg.user .msg-avatar{background:linear-gradient(135deg,var(--accent2),var(--accent))}
-.msg-bubble{max-width:78%;padding:12px 16px;border-radius:16px;font-size:0.88rem;line-height:1.65;position:relative}
+.msg-bubble{max-width:78%;padding:11px 15px;border-radius:15px;font-size:0.87rem;line-height:1.65}
 .msg.ai .msg-bubble{background:var(--surface);border:1px solid var(--border);border-top-left-radius:4px}
 .msg.user .msg-bubble{background:linear-gradient(135deg,var(--accent2),rgba(79,209,197,.8));color:#fff;border-top-right-radius:4px}
-.msg-tag{font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;opacity:.6}
-
-/* ── IMAGEN EN CHAT ── */
-.msg-img{width:100%;max-width:340px;border-radius:12px;margin-top:10px;border:1px solid var(--border);display:block}
-.img-caption{font-size:0.68rem;color:var(--muted);margin-top:4px;font-style:italic}
-
-/* ── LEER VOZ ── */
-.btn-leer{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:5px 12px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:0.72rem;cursor:pointer;transition:all .2s}
-.btn-leer:hover{border-color:var(--accent);color:var(--accent)}
-.btn-leer.leyendo{border-color:var(--accent);color:var(--accent);background:rgba(79,209,197,.08)}
+.msg-tag{font-size:0.63rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;opacity:.6}
+.msg-img{width:100%;max-width:320px;border-radius:11px;margin-top:9px;border:1px solid var(--border);display:block}
+.img-caption{font-size:0.66rem;color:var(--muted);margin-top:3px;font-style:italic}
+.btn-leer{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:5px 11px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:0.7rem;transition:all .2s}
+.btn-leer:hover,.btn-leer.leyendo{border-color:var(--accent);color:var(--accent)}
 
 /* ── SUGERENCIAS ── */
-.sugerencias{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px;max-width:680px;width:100%;margin:0 auto}
-.sug{padding:8px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:0.78rem;cursor:pointer;transition:all .15s}
+.sugerencias{display:flex;gap:7px;flex-wrap:wrap;padding:0 18px;max-width:680px;width:100%;margin:0 auto}
+.sug{padding:7px 13px;border-radius:999px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:0.76rem;transition:all .15s}
 .sug:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── INPUT ── */
-.input-area{padding:14px 20px 20px;max-width:680px;width:100%;margin:0 auto}
-.input-wrap{display:flex;gap:8px;align-items:flex-end;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;transition:border-color .2s}
+.input-area{padding:12px 18px 18px;max-width:680px;width:100%;margin:0 auto}
+.input-wrap{display:flex;gap:7px;align-items:flex-end;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:9px 11px;transition:border-color .2s}
 .input-wrap:focus-within{border-color:var(--accent)}
-textarea{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--font-body);font-size:0.9rem;resize:none;outline:none;line-height:1.5;max-height:120px;min-height:24px}
+textarea{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--font-body);font-size:0.88rem;resize:none;outline:none;line-height:1.5;max-height:120px;min-height:24px}
 textarea::placeholder{color:var(--muted)}
-.btn-send{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
-.btn-send:hover{opacity:.85}
-.btn-send:disabled{opacity:.4;cursor:default}
-.btn-mic{width:36px;height:36px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
-.btn-mic.escuchando{background:rgba(239,68,68,.15);border-color:var(--danger);color:var(--danger);animation:pulso-mic .8s ease-in-out infinite}
-@keyframes pulso-mic{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-.mic-hint{font-size:0.7rem;color:var(--muted);text-align:center;margin-top:6px;min-height:16px}
+.btn-icon{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
+.btn-icon.escuchando{background:rgba(239,68,68,.15);border-color:var(--danger);color:var(--danger);animation:pulso .8s ease-in-out infinite}
+@keyframes pulso{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.btn-send{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
+.btn-send:disabled{opacity:.4}
+.mic-hint{font-size:0.68rem;color:var(--muted);text-align:center;margin-top:5px;min-height:15px}
 
 /* ── TYPING ── */
 .typing{display:flex;gap:4px;padding:4px 0}
-.typing span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:bounce .9s infinite;opacity:.6}
+.typing span{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:bounce .9s infinite;opacity:.6}
 .typing span:nth-child(2){animation-delay:.15s}
 .typing span:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
 
-/* ── DIARIO BTN ── */
-.diario-btn{position:fixed;bottom:110px;right:20px;width:46px;height:46px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:10}
-.diario-btn:hover{border-color:var(--warm);color:var(--warm)}
-
-/* ── OVERLAY GENÉRICO ── */
+/* ── OVERLAY + DRAWER ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:30;display:none;backdrop-filter:blur(4px)}
-.overlay.open{display:block}
-
-/* ── DRAWER GENÉRICO ── */
-.drawer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 36px;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:31;max-height:88vh;overflow-y:auto}
-.drawer.open{transform:translateY(0)}
-.drawer-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
-.drawer-title{font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:4px}
-.drawer-sub{font-size:0.78rem;color:var(--muted);margin-bottom:20px}
-
-/* ── PERFIL FORM ── */
-.field-label{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;margin-top:18px;display:block}
+.overlay.on{display:block}
+.drawer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-radius:22px 22px 0 0;padding:22px 18px 34px;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:31;max-height:90vh;overflow-y:auto}
+.drawer.on{transform:translateY(0)}
+.drawer-handle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+.drawer-title{font-family:var(--font-display);font-weight:700;font-size:1.05rem;margin-bottom:3px}
+.drawer-sub{font-size:0.76rem;color:var(--muted);margin-bottom:18px}
+.field-label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px;margin-top:16px;display:block}
 .field-label:first-of-type{margin-top:0}
-.field-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:10px 14px;font-family:var(--font-body);font-size:0.88rem}
+.field-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:10px 13px;font-family:var(--font-body);font-size:0.86rem}
 .field-input:focus{outline:none;border-color:var(--accent)}
-.field-select{width:100%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:10px 14px;font-family:var(--font-body);font-size:0.88rem;appearance:none}
-.chips-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.opt-chip{padding:7px 14px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:0.78rem;font-weight:500;cursor:pointer;transition:all .15s}
+.field-select{width:100%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:10px 13px;font-family:var(--font-body);font-size:0.86rem;appearance:none}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
+.opt-chip{padding:6px 13px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:0.76rem;font-weight:500;transition:all .15s}
 .opt-chip.sel{border-color:var(--accent);color:var(--accent);background:rgba(79,209,197,.1)}
-.btn-primario{width:100%;margin-top:24px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:12px;padding:14px;font-family:var(--font-display);font-weight:600;font-size:0.95rem;cursor:pointer;transition:opacity .15s}
+.btn-primario{width:100%;margin-top:22px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:12px;padding:13px;font-family:var(--font-display);font-weight:600;font-size:0.92rem;transition:opacity .15s}
 .btn-primario:hover{opacity:.9}
 
 /* ── PANEL AVANCES ── */
-.avances-section{margin-bottom:24px}
-.avances-section h3{font-family:var(--font-display);font-weight:600;font-size:0.9rem;margin-bottom:12px;color:var(--accent);display:flex;align-items:center;gap:6px}
-.stat-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.83rem}
+.psec{font-size:0.67rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px}
+.psec:first-child{margin-top:0}
+.stat-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.8rem}
 .stat-row:last-child{border-bottom:none}
 .stat-label{color:var(--muted)}
-.stat-val{font-weight:600;color:var(--text)}
-
-/* ── GRÁFICO EVOLUCIÓN ── */
-.grafico-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:8px}
-.grafico-title{font-size:0.72rem;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-canvas#graficoEvolucion{width:100%!important;height:140px!important}
-
-.intereses-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.interes-tag{padding:4px 12px;border-radius:999px;font-size:0.75rem;border:1.5px solid var(--accent);color:var(--accent);background:rgba(79,209,197,.08)}
-
-.diario-item{padding:10px 0;border-bottom:1px solid var(--border);font-size:0.83rem;color:var(--muted);line-height:1.6}
+.stat-val{font-weight:600}
+.grafico-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:6px}
+.grafico-title{font-size:0.7rem;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.interes-tag{display:inline-block;padding:3px 11px;border-radius:999px;font-size:0.73rem;border:1.5px solid var(--accent);color:var(--accent);background:rgba(79,209,197,.08);margin:2px}
+.diario-item{padding:9px 0;border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--muted);line-height:1.6}
 .diario-item b{color:var(--text)}
 .diario-item:last-child{border-bottom:none}
-.diario-fecha{font-size:0.68rem;color:var(--muted);margin-bottom:4px;font-style:italic}
+.diario-fecha{font-size:0.66rem;color:var(--muted);margin-bottom:3px;font-style:italic}
+.btn-secundario{width:100%;margin-top:10px;background:var(--surface2);border:1.5px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;font-family:var(--font-display);font-weight:600;font-size:0.88rem;transition:all .2s}
+.btn-secundario:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── PIN MODAL ── */
-.pin-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:50;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
-.pin-modal.open{display:flex}
-.pin-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 28px;width:min(340px,92vw);text-align:center}
-.pin-icon{font-size:2rem;margin-bottom:12px}
-.pin-title{font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:6px}
-.pin-sub{font-size:0.78rem;color:var(--muted);margin-bottom:20px}
-.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:20px}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .2s}
+.pin-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:50;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.pin-modal.on{display:flex}
+.pin-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:30px 26px;width:min(330px,92vw);text-align:center}
+.pin-icon{font-size:1.8rem;margin-bottom:10px}
+.pin-title{font-family:var(--font-display);font-weight:700;font-size:0.95rem;margin-bottom:5px}
+.pin-sub{font-size:0.76rem;color:var(--muted);margin-bottom:18px}
+.pin-dots{display:flex;gap:11px;justify-content:center;margin-bottom:18px}
+.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .2s}
 .pin-dot.filled{background:var(--accent);border-color:var(--accent)}
-.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:220px;margin:0 auto}
-.pin-btn{padding:14px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:1.1rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font-display)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:210px;margin:0 auto}
+.pin-btn{padding:13px;border-radius:11px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:1.05rem;font-weight:600;font-family:var(--font-display);transition:all .15s}
 .pin-btn:hover{border-color:var(--accent);color:var(--accent)}
-.pin-btn.del{color:var(--muted);font-size:0.9rem}
+.pin-btn.del{color:var(--muted);font-size:0.88rem}
 .pin-btn.vacio{visibility:hidden}
-.pin-error{color:var(--danger);font-size:0.78rem;margin-top:10px;min-height:18px}
-.pin-cancel{margin-top:14px;background:transparent;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer}
-.pin-cancel:hover{color:var(--text)}
+.pin-error{color:var(--danger);font-size:0.76rem;margin-top:9px;min-height:17px}
+.pin-cancel{margin-top:12px;background:transparent;border:none;color:var(--muted);font-size:0.78rem}
+
+/* ── BTN FLOTANTE AVANCES ── */
+.btn-flotante{position:fixed;bottom:105px;right:18px;width:44px;height:44px;border-radius:13px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:19px;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:10}
+.btn-flotante:hover{border-color:var(--warm);color:var(--warm)}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:10px 20px;border-radius:999px;font-size:0.82rem;font-weight:500;opacity:0;transition:all .3s;z-index:99;pointer-events:none;white-space:nowrap}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:9px 18px;border-radius:999px;font-size:0.8rem;font-weight:500;opacity:0;transition:all .3s;z-index:99;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── API ERROR ── */
+.api-error{background:rgba(239,68,68,.1);border:1px solid var(--danger);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:var(--danger);margin-top:8px;display:none}
+.api-error.on{display:block}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="logo" id="logoTap">
-    <div class="logo-icon">🧠</div>
-    <div>
-      <div class="logo-text">M<span>TC</span></div>
-      <div style="font-size:0.62rem;color:var(--muted)">Motor de Traducción Cognitiva</div>
+<!-- ════ PANTALLA LOGIN ════ -->
+<div id="screenLogin">
+  <div class="login-logo">🧠</div>
+  <div class="login-title">M<span>TC</span></div>
+  <div style="font-size:0.72rem;color:var(--muted);margin-top:-10px">Motor de Traducción Cognitiva</div>
+  <div class="login-sub">Iniciá sesión para que tu progreso se guarde entre sesiones.</div>
+  <button class="btn-google" id="btnLogin">
+    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285f4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.07-1.8 2.71v2.26h2.92c1.71-1.57 2.68-3.88 2.68-6.61z"/><path fill="#34a853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.81.54-1.84.87-3.04.87-2.34 0-4.32-1.58-5.03-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"/><path fill="#fbbc05" d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A8.96 8.96 0 0 0 0 9c0 1.45.35 2.82.96 4.05l3.01-2.33z"/><path fill="#ea4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+    Continuar con Google
+  </button>
+  <div class="login-err" id="loginErr"></div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="screenApp">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo" id="logoTap">
+      <div class="logo-icon">🧠</div>
+      <div>
+        <div class="logo-text">M<span>TC</span></div>
+        <div style="font-size:0.6rem;color:var(--muted)">Motor de Traducción Cognitiva</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn-config" id="btnConfig" onclick="abrirPerfil()">⚙️ Perfil</button>
+      <div class="nivel-badge">Nivel <b id="nivelLabel">—</b></div>
+      <img class="user-avatar" id="userAvatar" src="" alt="user" onclick="cerrarSesion()" title="Cerrar sesión" style="display:none">
     </div>
   </div>
-  <div class="header-right">
-    <button class="btn-config" id="btnConfig" onclick="abrirPerfil()">⚙️ Perfil</button>
-    <div class="nivel-badge">Nivel <b id="nivelLabel">—</b></div>
+
+  <!-- BARRAS COGNITIVAS -->
+  <div class="perfil-strip">
+    <div class="perfil-item"><div class="perfil-bar-wrap"><div class="perfil-bar" id="barComprension" style="width:50%"></div></div><div class="perfil-label">Comprensión</div></div>
+    <div class="perfil-item"><div class="perfil-bar-wrap"><div class="perfil-bar" id="barVocabulario" style="width:40%"></div></div><div class="perfil-label">Vocabulario</div></div>
+    <div class="perfil-item"><div class="perfil-bar-wrap"><div class="perfil-bar" id="barAtencion" style="width:70%"></div></div><div class="perfil-label">Atención</div></div>
+    <div class="perfil-item"><div class="perfil-bar-wrap"><div class="perfil-bar" id="barMotivacion" style="width:60%"></div></div><div class="perfil-label">Motivación</div></div>
+    <div class="perfil-item"><div class="perfil-bar-wrap"><div class="perfil-bar" id="barMemoria" style="width:45%"></div></div><div class="perfil-label">Memoria</div></div>
+  </div>
+
+  <!-- INTERESES -->
+  <div class="intereses-strip" id="interesesStrip">
+    <div class="interes-chip" id="int-tecnologia">💻 tecnología</div>
+    <div class="interes-chip" id="int-autos">🚗 autos</div>
+    <div class="interes-chip" id="int-musica">🎵 música</div>
+    <div class="interes-chip" id="int-futbol">⚽ fútbol</div>
+    <div class="interes-chip" id="int-animales">🐾 animales</div>
+    <div class="interes-chip" id="int-cocina">🍳 cocina</div>
+    <div class="interes-chip" id="int-historia">📜 historia</div>
+    <div class="interes-chip" id="int-naturaleza">🌿 naturaleza</div>
+    <div class="interes-chip" id="int-arte">🎨 arte</div>
+    <div class="interes-chip" id="int-videojuegos">🎮 videojuegos</div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-area" id="chatArea"></div>
+
+  <!-- SUGERENCIAS -->
+  <div class="sugerencias" id="sugerencias">
+    <button class="sug" onclick="enviarSugerencia(this)">¿Qué es la inteligencia artificial?</button>
+    <button class="sug" onclick="enviarSugerencia(this)">Explicame cómo funciona un motor</button>
+    <button class="sug" onclick="enviarSugerencia(this)">¿Por qué se mueven las nubes?</button>
+  </div>
+
+  <!-- API ERROR -->
+  <div class="api-error" id="apiError"></div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="inputMsg" placeholder="Preguntame cualquier cosa..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      <button class="btn-icon" id="btnMic" onclick="toggleVoz()" title="Hablar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <button class="btn-send" id="btnSend" onclick="enviar()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="mic-hint" id="micHint"></div>
   </div>
 </div>
 
-<!-- BARRAS COGNITIVAS -->
-<div class="perfil-strip" id="perfilStrip">
-  <div class="perfil-item">
-    <div class="perfil-bar-wrap"><div class="perfil-bar" id="barComprension" style="width:50%"></div></div>
-    <div class="perfil-label">Comprensión</div>
-  </div>
-  <div class="perfil-item">
-    <div class="perfil-bar-wrap"><div class="perfil-bar" id="barVocabulario" style="width:40%"></div></div>
-    <div class="perfil-label">Vocabulario</div>
-  </div>
-  <div class="perfil-item">
-    <div class="perfil-bar-wrap"><div class="perfil-bar" id="barAtencion" style="width:70%"></div></div>
-    <div class="perfil-label">Atención</div>
-  </div>
-  <div class="perfil-item">
-    <div class="perfil-bar-wrap"><div class="perfil-bar" id="barMotivacion" style="width:60%"></div></div>
-    <div class="perfil-label">Motivación</div>
-  </div>
-  <div class="perfil-item">
-    <div class="perfil-bar-wrap"><div class="perfil-bar" id="barMemoria" style="width:45%"></div></div>
-    <div class="perfil-label">Memoria</div>
-  </div>
-</div>
-
-<!-- INTERESES DETECTADOS -->
-<div class="intereses-strip" id="interesesStrip">
-  <div class="interes-chip" id="int-tecnologia">💻 tecnología</div>
-  <div class="interes-chip" id="int-autos">🚗 autos</div>
-  <div class="interes-chip" id="int-musica">🎵 música</div>
-  <div class="interes-chip" id="int-futbol">⚽ fútbol</div>
-  <div class="interes-chip" id="int-animales">🐾 animales</div>
-  <div class="interes-chip" id="int-cocina">🍳 cocina</div>
-  <div class="interes-chip" id="int-historia">📜 historia</div>
-  <div class="interes-chip" id="int-naturaleza">🌿 naturaleza</div>
-  <div class="interes-chip" id="int-arte">🎨 arte</div>
-  <div class="interes-chip" id="int-videojuegos">🎮 videojuegos</div>
-</div>
-
-<!-- CHAT -->
-<div class="chat-area" id="chatArea"></div>
-
-<!-- SUGERENCIAS INICIALES -->
-<div class="sugerencias" id="sugerencias">
-  <button class="sug" onclick="enviarSugerencia(this)">¿Qué es la inteligencia artificial?</button>
-  <button class="sug" onclick="enviarSugerencia(this)">Explicame cómo funciona un motor</button>
-  <button class="sug" onclick="enviarSugerencia(this)">¿Por qué se mueven las nubes?</button>
-</div>
-
-<!-- INPUT -->
-<div class="input-area">
-  <div class="input-wrap">
-    <textarea id="inputMsg" placeholder="Preguntame cualquier cosa..." rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"
-      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-    <button class="btn-mic" id="btnMic" onclick="toggleVoz()" title="Hablar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-        <line x1="12" y1="19" x2="12" y2="23"/>
-        <line x1="8" y1="23" x2="16" y2="23"/>
-      </svg>
-    </button>
-    <button class="btn-send" id="btnSend" onclick="enviar()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
-    </button>
-  </div>
-  <div class="mic-hint" id="micHint"></div>
-</div>
-
-<!-- BTN DIARIO -->
-<button class="diario-btn" onclick="abrirAvances()" title="Avances y diario">📊</button>
+<!-- BTN AVANCES -->
+<button class="btn-flotante" id="btnAvances" onclick="abrirAvances()" title="Ver avances" style="display:none">📊</button>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -275,22 +277,16 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
   <div class="drawer-handle"></div>
   <div class="drawer-title">Perfil del usuario</div>
   <div class="drawer-sub">Esta info ayuda a MTC a adaptar las respuestas desde el primer mensaje.</div>
-
   <label class="field-label">Nombre (opcional)</label>
   <input class="field-input" id="pNombre" type="text" placeholder="¿Cómo se llama?">
-
   <label class="field-label">Edad</label>
   <select class="field-select" id="pEdad">
     <option value="">Seleccioná una opción</option>
-    <option value="4-7">4 a 7 años</option>
-    <option value="8-11">8 a 11 años</option>
-    <option value="12-17">12 a 17 años</option>
-    <option value="18-35">18 a 35 años</option>
-    <option value="36-60">36 a 60 años</option>
-    <option value="60+">Más de 60 años</option>
+    <option value="4-7">4 a 7 años</option><option value="8-11">8 a 11 años</option>
+    <option value="12-17">12 a 17 años</option><option value="18-35">18 a 35 años</option>
+    <option value="36-60">36 a 60 años</option><option value="60+">Más de 60 años</option>
   </select>
-
-  <label class="field-label">Cuadro clínico o condición (si aplica)</label>
+  <label class="field-label">Cuadro clínico o condición</label>
   <div class="chips-wrap" id="chipsCuadro">
     <button class="opt-chip" data-val="ninguno" onclick="toggleChip(this,'cuadro')">Ninguno</button>
     <button class="opt-chip" data-val="tdah" onclick="toggleChip(this,'cuadro')">TDAH</button>
@@ -301,7 +297,6 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
     <button class="opt-chip" data-val="daltonismo" onclick="toggleChip(this,'cuadro')">Daltonismo</button>
     <button class="opt-chip" data-val="otro" onclick="toggleChip(this,'cuadro')">Otro</button>
   </div>
-
   <label class="field-label">Nivel escolar</label>
   <select class="field-select" id="pNivelEscolar">
     <option value="">Seleccioná una opción</option>
@@ -313,8 +308,7 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
     <option value="universitario">Universitario / terciario</option>
     <option value="adulto-mayor">Adulto mayor (no aplica)</option>
   </select>
-
-  <label class="field-label">Objetivos — ¿Qué esperan de MTC?</label>
+  <label class="field-label">Objetivos</label>
   <div class="chips-wrap" id="chipsObjetivos">
     <button class="opt-chip" data-val="mejorar-lectura" onclick="toggleChip(this,'objetivos')">📖 Mejorar lectura</button>
     <button class="opt-chip" data-val="aprendizaje-general" onclick="toggleChip(this,'objetivos')">🧠 Aprendizaje general</button>
@@ -325,13 +319,12 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
     <button class="opt-chip" data-val="matematicas" onclick="toggleChip(this,'objetivos')">🔢 Matemáticas</button>
     <button class="opt-chip" data-val="memoria" onclick="toggleChip(this,'objetivos')">🗂️ Memoria</button>
   </div>
-
   <label class="field-label">Intereses manuales</label>
   <div class="chips-wrap" id="chipsIntereses">
     <button class="opt-chip" data-val="tecnologia" onclick="toggleChip(this,'intereses-m')">💻 Tecnología</button>
-    <button class="opt-chip" data-val="autos" onclick="toggleChip(this,'intereses-m')">🚗 Autos / motos</button>
+    <button class="opt-chip" data-val="autos" onclick="toggleChip(this,'intereses-m')">🚗 Autos</button>
     <button class="opt-chip" data-val="musica" onclick="toggleChip(this,'intereses-m')">🎵 Música</button>
-    <button class="opt-chip" data-val="futbol" onclick="toggleChip(this,'intereses-m')">⚽ Fútbol / deporte</button>
+    <button class="opt-chip" data-val="futbol" onclick="toggleChip(this,'intereses-m')">⚽ Fútbol</button>
     <button class="opt-chip" data-val="animales" onclick="toggleChip(this,'intereses-m')">🐾 Animales</button>
     <button class="opt-chip" data-val="cocina" onclick="toggleChip(this,'intereses-m')">🍳 Cocina</button>
     <button class="opt-chip" data-val="historia" onclick="toggleChip(this,'intereses-m')">📜 Historia</button>
@@ -339,57 +332,31 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
     <button class="opt-chip" data-val="arte" onclick="toggleChip(this,'intereses-m')">🎨 Arte</button>
     <button class="opt-chip" data-val="videojuegos" onclick="toggleChip(this,'intereses-m')">🎮 Videojuegos</button>
   </div>
-
-  <label class="field-label">Observaciones del cuidador (opcional)</label>
-  <textarea class="field-input" id="pObservaciones" rows="2"
-    placeholder="Ej: le cuesta mantener la atención más de 5 minutos..."></textarea>
-
+  <label class="field-label">Observaciones del cuidador</label>
+  <textarea class="field-input" id="pObservaciones" rows="2" placeholder="Ej: le cuesta mantener la atención más de 5 minutos..."></textarea>
   <button class="btn-primario" onclick="guardarPerfil()">💾 Guardar perfil</button>
 </div>
 
-<!-- ════ OVERLAY + DRAWER AVANCES (PIN protegido) ════ -->
+<!-- ════ OVERLAY + DRAWER AVANCES ════ -->
 <div class="overlay" id="avancesOverlay" onclick="cerrarAvances()"></div>
 <div class="drawer" id="avancesDrawer">
   <div class="drawer-handle"></div>
   <div class="drawer-title">📊 Avances cognitivos</div>
-  <div class="drawer-sub" id="avancesSubtitulo">Progreso de la sesión actual</div>
-
-  <!-- Sección: evolución -->
-  <div class="avances-section">
-    <h3>📈 Evolución cognitiva</h3>
-    <div class="grafico-wrap">
-      <div class="grafico-title">Comprensión a lo largo de las sesiones</div>
-      <canvas id="graficoEvolucion"></canvas>
-    </div>
-  </div>
-
-  <!-- Sección: stats -->
-  <div class="avances-section">
-    <h3>🧮 Sesión actual</h3>
-    <div id="statsContainer">
-      <div class="stat-row"><span class="stat-label">Comprensión</span><span class="stat-val" id="statComprension">—</span></div>
-      <div class="stat-row"><span class="stat-label">Vocabulario</span><span class="stat-val" id="statVocabulario">—</span></div>
-      <div class="stat-row"><span class="stat-label">Motivación</span><span class="stat-val" id="statMotivacion">—</span></div>
-      <div class="stat-row"><span class="stat-label">Atención</span><span class="stat-val" id="statAtencion">—</span></div>
-      <div class="stat-row"><span class="stat-label">Nivel actual</span><span class="stat-val" id="statNivel">—</span></div>
-      <div class="stat-row"><span class="stat-label">Mensajes hoy</span><span class="stat-val" id="statMensajes">—</span></div>
-    </div>
-  </div>
-
-  <!-- Sección: intereses -->
-  <div class="avances-section">
-    <h3>🎯 Intereses detectados</h3>
-    <div class="intereses-tags" id="interesesAvances"></div>
-  </div>
-
-  <!-- Sección: diario -->
-  <div class="avances-section">
-    <h3>📓 Diario de sesiones</h3>
-    <div id="diarioContainer"><div class="diario-item">Todavía no hay sesiones registradas.</div></div>
-  </div>
-
-  <!-- Sección: editar perfil desde avances -->
-  <button class="btn-primario" style="background:var(--surface2);border:1.5px solid var(--border);color:var(--muted)" onclick="cerrarAvances();setTimeout(abrirPerfil,350)">⚙️ Editar perfil</button>
+  <div class="drawer-sub">Progreso registrado en tus sesiones</div>
+  <div class="psec">📈 Evolución</div>
+  <div class="grafico-wrap"><div class="grafico-title">Comprensión por sesión</div><canvas id="graficoEvolucion" height="140"></canvas></div>
+  <div class="psec">🧮 Sesión actual</div>
+  <div class="stat-row"><span class="stat-label">Comprensión</span><span class="stat-val" id="stComprension">—</span></div>
+  <div class="stat-row"><span class="stat-label">Vocabulario</span><span class="stat-val" id="stVocabulario">—</span></div>
+  <div class="stat-row"><span class="stat-label">Motivación</span><span class="stat-val" id="stMotivacion">—</span></div>
+  <div class="stat-row"><span class="stat-label">Nivel</span><span class="stat-val" id="stNivel">—</span></div>
+  <div class="stat-row"><span class="stat-label">Mensajes hoy</span><span class="stat-val" id="stMensajes">—</span></div>
+  <div class="psec">🎯 Intereses detectados</div>
+  <div id="interesesAvances" style="margin-top:4px"></div>
+  <div class="psec">📓 Diario de sesiones</div>
+  <div id="diarioContainer"><div class="diario-item">Sin sesiones registradas aún.</div></div>
+  <button class="btn-secundario" onclick="cerrarAvances();setTimeout(abrirPerfil,350)">⚙️ Editar perfil</button>
+  <button class="btn-secundario" style="margin-top:6px;color:var(--danger);border-color:var(--danger)" onclick="cerrarSesion()">Cerrar sesión</button>
 </div>
 
 <!-- ════ PIN MODAL ════ -->
@@ -399,10 +366,8 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
     <div class="pin-title">Área de cuidadores</div>
     <div class="pin-sub">Ingresá el PIN para ver los avances</div>
     <div class="pin-dots">
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-      <div class="pin-dot" id="pd4"></div>
+      <div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div><div class="pin-dot" id="pd4"></div>
     </div>
     <div class="pin-grid">
       <button class="pin-btn" onclick="pinInput('1')">1</button>
@@ -423,10 +388,10 @@ canvas#graficoEvolucion{width:100%!important;height:140px!important}
   </div>
 </div>
 
-<script type="module">
-// ══════════════════════════════════════════
-//  FIREBASE CONFIG — reemplazá con tu config
-// ══════════════════════════════════════════
+<script>
+// ════════════════════════════════════════
+//  FIREBASE CONFIG
+// ════════════════════════════════════════
 const firebaseConfig = {
   apiKey: "AIzaSyCWAHpjpJXGpxFqEwJtP7T_NvFtp5JUQ4U",
   authDomain: "mdtc-487d4.firebaseapp.com",
@@ -435,64 +400,106 @@ const firebaseConfig = {
   messagingSenderId: "832906706205",
   appId: "1:832906706205:web:96e4165ffba23b4c5a35f4"
 };
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-// ── CONSTANTES ──
-const UNSPLASH_KEY   = '31CEhOmCOelZ9RbMCG0l14Av3FCMUW6MFDym_99fZf8';
-const PIN_CUIDADOR   = '1234'; // Cambiar en producción desde perfil
-const HOY            = new Date().toISOString().slice(0,10);
+// ════════════════════════════════════════
+//  CONSTANTES
+// ════════════════════════════════════════
+const ANTHROPIC_KEY = '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';
+const UNSPLASH_KEY  = '31CEhOmCOelZ9RbMCG0l14Av3FCMUW6MFDym_99fZf8';
+const PIN_DEFAULT   = '1234';
+const HOY           = new Date().toISOString().slice(0,10);
 
-// ── ESTADO GLOBAL ──
-let me = null; // uid Firebase anónimo
-let perfilCognitivo = {
-  comprension: 50, vocabulario: 40, atencion: 70,
-  motivacion: 60, memoria: 45, intereses: [],
-  nivel: '—', mensajes: 0, temas: []
-};
+// ════════════════════════════════════════
+//  ESTADO
+// ════════════════════════════════════════
+let me = null;
 let perfilConfig = {};
-let historial = [];
+let perfilCognitivo = {
+  comprension:50, vocabulario:40, atencion:70,
+  motivacion:60, memoria:45, intereses:[],
+  nivel:'—', mensajes:0, temas:[]
+};
+let historial      = [];
+let evolucionData  = [];
 let diarioSesiones = [];
-let evolucionData = []; // [{fecha, comprension}]
-let pinActual = '';
-let pinTarget = null; // función a ejecutar tras PIN correcto
-let voiceReading = null;
+let pinActual      = '';
+let pinTarget      = null;
+let voiceReading   = null;
+let reconocimiento = null;
+let escuchando     = false;
+const selecciones  = { cuadro:[], objetivos:[], 'intereses-m':[] };
 
-// ═══════════════════════
-//  FIREBASE AUTH ANÓNIMO
-// ═══════════════════════
-function initFirebase() {
-  auth.signInAnonymously().catch(e => console.warn('Firebase anón:', e.message));
-  auth.onAuthStateChanged(user => {
-    if (!user) return;
-    me = user.uid;
-    cargarDatosFirestore();
+// ════════════════════════════════════════
+//  AUTH — LOGIN GOOGLE OBLIGATORIO
+// ════════════════════════════════════════
+document.getElementById('btnLogin').onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => {
+    document.getElementById('loginErr').textContent = e.message;
   });
-}
+};
 
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    me = user.uid;
+    // Mostrar avatar del usuario
+    const avatar = document.getElementById('userAvatar');
+    if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
+
+    // Mostrar app, ocultar login
+    document.getElementById('screenLogin').classList.remove('on');
+    document.getElementById('screenApp').classList.add('on');
+    document.getElementById('btnAvances').style.display = 'flex';
+
+    await cargarDatosFirestore();
+    mostrarMensajeInicial();
+  } else {
+    me = null;
+    document.getElementById('screenApp').classList.remove('on');
+    document.getElementById('btnAvances').style.display = 'none';
+    document.getElementById('screenLogin').classList.add('on');
+  }
+});
+
+function cerrarSesion() {
+  auth.signOut();
+  cerrarAvances();
+}
+window.cerrarSesion = cerrarSesion;
+
+// ════════════════════════════════════════
+//  FIRESTORE — CARGA Y GUARDADO
+// ════════════════════════════════════════
 async function cargarDatosFirestore() {
   if (!me) return;
   try {
-    const perfilDoc = await db.collection('usuarios').doc(me).get();
-    if (perfilDoc.exists) {
-      const d = perfilDoc.data();
-      if (d.perfilConfig) {
+    const doc = await db.collection('usuarios').doc(me).get();
+    if (doc.exists) {
+      const d = doc.data();
+      if (d.perfilConfig && Object.keys(d.perfilConfig).length > 0) {
         perfilConfig = d.perfilConfig;
-        localStorage.setItem('mtc-perfil', JSON.stringify(perfilConfig));
-        aplicarPerfilEnUI();
+        localStorage.setItem('mtc-perfil-' + me, JSON.stringify(perfilConfig));
       }
-      if (d.evolucion) {
-        evolucionData = d.evolucion;
-      }
+      if (d.evolucion) evolucionData = d.evolucion;
+    } else {
+      // Usuario nuevo — intentar cargar desde localStorage
+      const local = localStorage.getItem('mtc-perfil-' + me);
+      if (local) { try { perfilConfig = JSON.parse(local); } catch(e){} }
     }
-    // Cargar sesiones históricas
-    const sesDoc = await db.collection('usuarios').doc(me)
+    aplicarPerfilEnUI();
+
+    // Cargar diario
+    const sesionesDocs = await db.collection('usuarios').doc(me)
       .collection('sesiones').orderBy('fecha','desc').limit(10).get();
-    diarioSesiones = sesDoc.docs.map(d => d.data());
+    diarioSesiones = sesionesDocs.docs.map(d => d.data());
   } catch(e) {
-    console.warn('Firestore load:', e.message);
+    console.warn('Firestore carga:', e.message);
+    // Fallback a localStorage
+    const local = localStorage.getItem('mtc-perfil-' + me);
+    if (local) { try { perfilConfig = JSON.parse(local); aplicarPerfilEnUI(); } catch(e){} }
   }
 }
 
@@ -502,6 +509,7 @@ async function guardarFirestore() {
     await db.collection('usuarios').doc(me).set({
       perfilConfig,
       evolucion: evolucionData,
+      uid: me,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
   } catch(e) { console.warn('Firestore save:', e.message); }
@@ -523,47 +531,43 @@ async function guardarSesionFirestore() {
   } catch(e) { console.warn('Sesión save:', e.message); }
 }
 
-// ═══════════════════════
+// ════════════════════════════════════════
 //  PERFIL CONFIG
-// ═══════════════════════
-const selecciones = { cuadro: [], objetivos: [], 'intereses-m': [] };
-
+// ════════════════════════════════════════
 function toggleChip(btn, grupo) {
   btn.classList.toggle('sel');
   const val = btn.dataset.val;
   const idx = selecciones[grupo].indexOf(val);
-  if (idx >= 0) selecciones[grupo].splice(idx, 1);
-  else selecciones[grupo].push(val);
+  if (idx >= 0) selecciones[grupo].splice(idx,1); else selecciones[grupo].push(val);
 }
 window.toggleChip = toggleChip;
 
 function abrirPerfil() {
-  document.getElementById('perfilOverlay').classList.add('open');
-  document.getElementById('perfilDrawer').classList.add('open');
   cargarPerfilEnUI();
+  document.getElementById('perfilOverlay').classList.add('on');
+  document.getElementById('perfilDrawer').classList.add('on');
 }
 window.abrirPerfil = abrirPerfil;
 
 function cerrarPerfil() {
-  document.getElementById('perfilOverlay').classList.remove('open');
-  document.getElementById('perfilDrawer').classList.remove('open');
+  document.getElementById('perfilOverlay').classList.remove('on');
+  document.getElementById('perfilDrawer').classList.remove('on');
 }
 window.cerrarPerfil = cerrarPerfil;
 
 function cargarPerfilEnUI() {
   const p = perfilConfig;
   if (!p || Object.keys(p).length === 0) return;
-  if (p.nombre) document.getElementById('pNombre').value = p.nombre;
-  if (p.edad) document.getElementById('pEdad').value = p.edad;
+  if (p.nombre)      document.getElementById('pNombre').value = p.nombre;
+  if (p.edad)        document.getElementById('pEdad').value = p.edad;
   if (p.nivelEscolar) document.getElementById('pNivelEscolar').value = p.nivelEscolar;
   if (p.observaciones) document.getElementById('pObservaciones').value = p.observaciones;
   ['cuadro','objetivos','intereses-m'].forEach(grupo => {
     const key = grupo === 'intereses-m' ? 'interesesManuales' : grupo;
     const vals = p[key] || [];
     selecciones[grupo] = vals.slice();
-    const containerId = grupo === 'cuadro' ? 'chipsCuadro'
-      : grupo === 'objetivos' ? 'chipsObjetivos' : 'chipsIntereses';
-    document.getElementById(containerId).querySelectorAll('.opt-chip').forEach(chip => {
+    const cId = grupo==='cuadro'?'chipsCuadro':grupo==='objetivos'?'chipsObjetivos':'chipsIntereses';
+    document.getElementById(cId).querySelectorAll('.opt-chip').forEach(chip => {
       chip.classList.toggle('sel', vals.includes(chip.dataset.val));
     });
   });
@@ -578,9 +582,9 @@ function guardarPerfil() {
     objetivos:         selecciones['objetivos'].slice(),
     interesesManuales: selecciones['intereses-m'].slice(),
     observaciones:     document.getElementById('pObservaciones').value.trim(),
-    pinCuidador:       perfilConfig.pinCuidador || PIN_CUIDADOR
+    pinCuidador:       perfilConfig.pinCuidador || PIN_DEFAULT
   };
-  localStorage.setItem('mtc-perfil', JSON.stringify(perfilConfig));
+  localStorage.setItem('mtc-perfil-' + me, JSON.stringify(perfilConfig));
   guardarFirestore();
   aplicarPerfilEnUI();
   cerrarPerfil();
@@ -590,12 +594,16 @@ window.guardarPerfil = guardarPerfil;
 
 function aplicarPerfilEnUI() {
   const p = perfilConfig;
-  if (!p || Object.keys(p).length === 0) return;
-  const btnCfg = document.getElementById('btnConfig');
-  btnCfg.textContent = p.nombre ? `⚙️ ${p.nombre}` : '⚙️ Perfil ✓';
-  btnCfg.classList.add('guardado');
-
-  if (p.interesesManuales) {
+  const btn = document.getElementById('btnConfig');
+  if (p && p.nombre) {
+    btn.textContent = '⚙️ ' + p.nombre;
+    btn.classList.add('guardado');
+  } else {
+    btn.textContent = '⚙️ Perfil';
+    btn.classList.remove('guardado');
+  }
+  // Activar intereses manuales
+  if (p && p.interesesManuales) {
     p.interesesManuales.forEach(i => {
       if (!perfilCognitivo.intereses.includes(i)) perfilCognitivo.intereses.push(i);
       const chip = document.getElementById('int-' + i);
@@ -604,56 +612,58 @@ function aplicarPerfilEnUI() {
   }
 }
 
-// ═══════════════════════
-//  SYSTEM PROMPT
-// ═══════════════════════
+// ════════════════════════════════════════
+//  SYSTEM PROMPT ADAPTATIVO
+// ════════════════════════════════════════
 function construirSystemPrompt() {
   const pc = perfilCognitivo;
   const pf = perfilConfig;
   let extra = '';
-
   if (pf && pf.nombre) {
-    extra = `\nPERFIL CONFIGURADO POR EL CUIDADOR (PRIORIDAD MÁXIMA):`;
+    extra = '\nPERFIL CONFIGURADO POR EL CUIDADOR (PRIORIDAD MÁXIMA):';
     if (pf.nombre)             extra += `\n- Nombre: ${pf.nombre}`;
-    if (pf.edad)               extra += `\n- Rango etario: ${pf.edad} años`;
+    if (pf.edad)               extra += `\n- Edad: ${pf.edad} años`;
     if (pf.cuadro?.length)     extra += `\n- Condición: ${pf.cuadro.join(', ')}`;
     if (pf.nivelEscolar)       extra += `\n- Nivel escolar: ${pf.nivelEscolar}`;
     if (pf.objetivos?.length)  extra += `\n- Objetivos: ${pf.objetivos.join(', ')}`;
-    if (pf.interesesManuales?.length) extra += `\n- Intereses declarados: ${pf.interesesManuales.join(', ')}`;
-    if (pf.observaciones)      extra += `\n- Observación del cuidador: ${pf.observaciones}`;
-    extra += `\nAdaptá el lenguaje y ritmo desde el primer mensaje según estos datos.\n`;
+    if (pf.interesesManuales?.length) extra += `\n- Intereses: ${pf.interesesManuales.join(', ')}`;
+    if (pf.observaciones)      extra += `\n- Observaciones: ${pf.observaciones}`;
+    extra += '\nAdaptá el lenguaje desde el primer mensaje según estos datos.\n';
   }
-
-  const interesesTxt = pc.intereses.length
-    ? `Intereses detectados: ${pc.intereses.join(', ')}.`
-    : 'Todavía explorando intereses — detectalos en la conversación.';
-
+  const iT = pc.intereses.length ? `Intereses detectados: ${pc.intereses.join(', ')}.` : 'Explorando intereses en la conversación.';
   return `${extra}
 Sos el Motor de Traducción Cognitiva (MTC). Tu misión es adaptar el conocimiento al perfil único de cada persona.
 
 PERFIL COGNITIVO DINÁMICO:
 - Comprensión: ${Math.round(pc.comprension)}% | Vocabulario: ${Math.round(pc.vocabulario)}% | Atención: ${Math.round(pc.atencion)}%
-- ${interesesTxt}
+- ${iT}
 - Mensajes en esta sesión: ${pc.mensajes}
 
 REGLAS ABSOLUTAS:
-1. Nunca evaluás. Nunca das notas, puntajes ni decís si algo está bien o mal.
-2. Adaptás el vocabulario al nivel. Si comprensión < 40%: frases muy cortas, palabras simples. Si > 70%: podés usar frases más elaboradas.
+1. Nunca evaluás. Nunca das notas ni decís si algo está bien o mal.
+2. Comprensión < 40%: frases muy cortas, palabras simples. > 70%: podés elaborar más.
 3. Usás siempre ejemplos relacionados con los intereses detectados.
 4. Hablás como un compañero curioso, nunca como un profesor.
-5. Detectás intereses en lo que dice el usuario y los incorporás sutilmente.
-6. Máximo 3 párrafos cortos por respuesta. Si necesitás más, preguntás si quiere continuar.
-7. Terminás con una pregunta abierta o una curiosidad para mantener el diálogo.
-8. NUNCA mencionás el perfil ni los porcentajes al usuario. Es información interna.
-9. Si el usuario parece cansado o frustrado, cambiás de tema suavemente.
-10. Tono cálido, curioso, sin condescendencia. Emojis ocasionales, nunca en exceso.
+5. Máximo 3 párrafos cortos por respuesta.
+6. Terminás con una pregunta abierta o una curiosidad.
+7. NUNCA mencionás el perfil ni los porcentajes al usuario.
+8. Si el usuario parece cansado o frustrado, cambiás de tema suavemente.
+9. Tono cálido, sin condescendencia. Emojis ocasionales, nunca en exceso.
 
 Tu objetivo: que el usuario sienta que esta app fue hecha exclusivamente para él.`;
 }
 
-// ═══════════════════════
+// ════════════════════════════════════════
 //  CHAT
-// ═══════════════════════
+// ════════════════════════════════════════
+function mostrarMensajeInicial() {
+  const nombre = perfilConfig.nombre;
+  const saludo = nombre
+    ? `¡Hola, ${nombre}! 🧠 Ya cargué tu perfil.\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`
+    : `¡Hola! Soy tu compañero de aprendizaje. 🧠\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`;
+  agregarMsgAI(saludo, true);
+}
+
 function agregarMsgUser(texto) {
   perfilCognitivo.mensajes++;
   const chat = document.getElementById('chatArea');
@@ -663,15 +673,14 @@ function agregarMsgUser(texto) {
     <div class="msg-bubble"><div class="msg-tag">Vos</div>${escapeHTML(texto)}</div>`;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-  historial.push({ role: 'user', content: texto });
+  historial.push({ role:'user', content:texto });
 }
 
 function agregarMsgAI(texto, sinImagen) {
   const chat = document.getElementById('chatArea');
-  const div = document.createElement('div');
+  const div  = document.createElement('div');
   div.className = 'msg ai';
   const bubId = 'bub-' + Date.now();
-
   div.innerHTML = `<div class="msg-avatar">🧠</div>
     <div class="msg-bubble" id="${bubId}">
       <div class="msg-tag">MTC</div>
@@ -679,14 +688,10 @@ function agregarMsgAI(texto, sinImagen) {
       <button class="btn-leer" onclick="leerTexto(this,'${bubId}')">🔊 Escuchar</button>
       <div id="img-${bubId}"></div>
     </div>`;
-
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-
-  if (historial.length === 0 || historial[historial.length-1].role !== 'assistant') {
-    historial.push({ role: 'assistant', content: texto });
-  }
-
+  if (!historial.length || historial[historial.length-1].role !== 'assistant')
+    historial.push({ role:'assistant', content:texto });
   if (!sinImagen && texto.length > 80) {
     const kw = extraerKeywords(texto);
     if (kw) buscarImagen(kw, bubId);
@@ -695,9 +700,8 @@ function agregarMsgAI(texto, sinImagen) {
 
 function mostrarTyping() {
   const chat = document.getElementById('chatArea');
-  const div = document.createElement('div');
-  div.className = 'msg ai';
-  div.id = 'typingIndicator';
+  const div  = document.createElement('div');
+  div.className = 'msg ai'; div.id = 'typingIndicator';
   div.innerHTML = `<div class="msg-avatar">🧠</div>
     <div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
   chat.appendChild(div);
@@ -715,9 +719,9 @@ function enviar() {
   const input = document.getElementById('inputMsg');
   const texto = input.value.trim();
   if (!texto) return;
-  input.value = '';
-  input.style.height = 'auto';
+  input.value = ''; input.style.height = 'auto';
   document.getElementById('sugerencias').style.display = 'none';
+  document.getElementById('apiError').classList.remove('on');
   agregarMsgUser(texto);
   llamarAPI(texto);
 }
@@ -729,8 +733,12 @@ function enviarSugerencia(btn) {
 }
 window.enviarSugerencia = enviarSugerencia;
 
+// ════════════════════════════════════════
+//  API ANTHROPIC — con manejo de errores visible
+// ════════════════════════════════════════
 async function llamarAPI(userMsg) {
-  document.getElementById('btnSend').disabled = true;
+  const btnSend = document.getElementById('btnSend');
+  btnSend.disabled = true;
   mostrarTyping();
 
   try {
@@ -738,7 +746,7 @@ async function llamarAPI(userMsg) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': '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',
+        'x-api-key': ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
@@ -749,9 +757,16 @@ async function llamarAPI(userMsg) {
         messages: historial.slice(-12)
       })
     });
+
     const data = await res.json();
     quitarTyping();
-    document.getElementById('btnSend').disabled = false;
+    btnSend.disabled = false;
+
+    if (!res.ok) {
+      const msg = data.error?.message || `Error ${res.status}`;
+      mostrarApiError(msg);
+      return;
+    }
 
     if (data.content?.[0]?.text) {
       const respuesta = data.content[0].text;
@@ -761,143 +776,139 @@ async function llamarAPI(userMsg) {
     }
   } catch(e) {
     quitarTyping();
-    document.getElementById('btnSend').disabled = false;
-    const detalle = e.message || 'desconocido';
-    agregarMsgAI('⚠️ No pude conectarme con el servidor. Verificá tu conexión e intentá de nuevo. (' + detalle + ')', true);
+    btnSend.disabled = false;
+    mostrarApiError('Sin conexión. Verificá tu red e intentá de nuevo. (' + e.message + ')');
   }
 }
 
-// ═══════════════════════
+function mostrarApiError(msg) {
+  const el = document.getElementById('apiError');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('on');
+}
+
+// ════════════════════════════════════════
 //  PERFIL COGNITIVO DINÁMICO
-// ═══════════════════════
-const keywords = {
-  tecnologia: ['tecnolog','computadora','celular','internet','app','software','hardware','programa','código','robot'],
-  autos:      ['auto','coche','motor','velocidad','rueda','camion','vehículo','gasolina','nafta'],
-  musica:     ['música','musica','canción','cancion','ritmo','melodía','instrumento','banda','artista'],
-  futbol:     ['fútbol','futbol','pelota','gol','equipo','jugador','partido','estadio','liga'],
-  animales:   ['animal','perro','gato','pájaro','pajaro','naturaleza','especie','mamífero'],
-  cocina:     ['cocina','comida','receta','ingrediente','sabor','cocinar','chef','alimento'],
-  historia:   ['historia','siglo','rey','guerra','antiguo','civilización','época'],
-  naturaleza: ['planta','árbol','bosque','río','montaña','océano','clima','medioambiente'],
-  arte:       ['pintura','dibujo','escultura','arte','museo','artista','color','creativo'],
-  videojuegos:['juego','videojuego','consola','playstation','xbox','nintendo','gaming','gamer']
+// ════════════════════════════════════════
+const KEYWORDS = {
+  tecnologia:  ['tecnolog','computadora','celular','internet','app','software','hardware','código','robot'],
+  autos:       ['auto','coche','motor','velocidad','rueda','camion','vehículo','gasolina','nafta'],
+  musica:      ['música','musica','canción','cancion','ritmo','melodía','instrumento','banda'],
+  futbol:      ['fútbol','futbol','pelota','gol','equipo','jugador','partido','estadio'],
+  animales:    ['animal','perro','gato','pájaro','pajaro','naturaleza','especie','mamífero'],
+  cocina:      ['cocina','comida','receta','ingrediente','sabor','cocinar','chef'],
+  historia:    ['historia','siglo','rey','guerra','antiguo','civilización','época'],
+  naturaleza:  ['planta','árbol','bosque','río','montaña','océano','clima'],
+  arte:        ['pintura','dibujo','escultura','arte','museo','artista','color'],
+  videojuegos: ['juego','videojuego','consola','playstation','xbox','nintendo','gaming']
 };
 
 function actualizarPerfil(pregunta, respuesta) {
   const pL = pregunta.toLowerCase();
-  Object.keys(keywords).forEach(interes => {
-    const encontrado = keywords[interes].some(kw => pL.includes(kw));
-    if (encontrado && !perfilCognitivo.intereses.includes(interes)) {
+  Object.keys(KEYWORDS).forEach(interes => {
+    if (KEYWORDS[interes].some(kw => pL.includes(kw)) && !perfilCognitivo.intereses.includes(interes)) {
       perfilCognitivo.intereses.push(interes);
       const chip = document.getElementById('int-' + interes);
       if (chip) chip.classList.add('detected');
     }
   });
-
   if (perfilCognitivo.mensajes > 1) {
     perfilCognitivo.comprension = Math.min(95, perfilCognitivo.comprension + Math.random()*3);
     perfilCognitivo.vocabulario  = Math.min(95, perfilCognitivo.vocabulario  + Math.random()*2);
     perfilCognitivo.motivacion   = Math.min(95, perfilCognitivo.motivacion   + Math.random()*4);
   }
-
   perfilCognitivo.temas.push(pregunta.slice(0,40));
-
   const prom = (perfilCognitivo.comprension + perfilCognitivo.vocabulario) / 2;
-  perfilCognitivo.nivel = prom < 30 ? '1-2' : prom < 50 ? '3-4' : prom < 65 ? '5-6' : prom < 80 ? '7-8' : '9-10';
-
+  perfilCognitivo.nivel = prom<30?'1-2':prom<50?'3-4':prom<65?'5-6':prom<80?'7-8':'9-10';
   document.getElementById('nivelLabel').textContent = perfilCognitivo.nivel;
   document.getElementById('barComprension').style.width = perfilCognitivo.comprension + '%';
   document.getElementById('barVocabulario').style.width  = perfilCognitivo.vocabulario  + '%';
   document.getElementById('barAtencion').style.width    = perfilCognitivo.atencion    + '%';
   document.getElementById('barMotivacion').style.width  = perfilCognitivo.motivacion  + '%';
   document.getElementById('barMemoria').style.width     = perfilCognitivo.memoria     + '%';
-
-  // Registrar punto de evolución
   const yaHoy = evolucionData.find(p => p.fecha === HOY);
-  if (yaHoy) { yaHoy.comprension = Math.round(perfilCognitivo.comprension); }
-  else { evolucionData.push({ fecha: HOY, comprension: Math.round(perfilCognitivo.comprension) }); }
+  if (yaHoy) yaHoy.comprension = Math.round(perfilCognitivo.comprension);
+  else evolucionData.push({ fecha:HOY, comprension:Math.round(perfilCognitivo.comprension) });
   if (evolucionData.length > 30) evolucionData.shift();
 }
 
-// ═══════════════════════
-//  IMÁGENES — UNSPLASH API
-// ═══════════════════════
-const stopwords = ['que','como','para','por','con','una','uno','los','las','del','también','pero','más','muy','este','esta','eso','cuando','donde','quien','sobre','desde','hasta','entre','tiene','podés','puede','vamos','algo','todo','cada','decir','hacer','saber'];
+// ════════════════════════════════════════
+//  UNSPLASH IMÁGENES
+// ════════════════════════════════════════
+const STOPWORDS = ['que','como','para','por','con','una','uno','los','las','del','también','pero','más','muy','este','esta','eso','cuando','donde','tiene','podés','puede','algo','todo','cada'];
 
 function extraerKeywords(texto) {
-  const palabras = texto.toLowerCase()
-    .replace(/[¿?¡!.,;:()\n]/g,' ')
-    .split(' ')
-    .filter(p => p.length > 4 && !stopwords.includes(p));
-  const unicas = [...new Set(palabras)];
-  return unicas.slice(0,2).join(' ');
+  const palabras = texto.toLowerCase().replace(/[¿?¡!.,;:()\n]/g,' ').split(' ')
+    .filter(p => p.length > 4 && !STOPWORDS.includes(p));
+  return [...new Set(palabras)].slice(0,2).join(' ');
 }
 
 async function buscarImagen(query, bubId) {
   try {
-    const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`;
-    const res = await fetch(url);
+    const res = await fetch(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`);
     if (!res.ok) return;
     const data = await res.json();
     const wrap = document.getElementById('img-' + bubId);
-    if (wrap && data.urls?.small) {
-      wrap.innerHTML = `<img class="msg-img" src="${data.urls.small}" alt="${data.alt_description || query}" loading="lazy">
-        <div class="img-caption">📷 ${data.alt_description || query} — <a href="${data.links.html}" target="_blank" style="color:var(--muted)">Unsplash</a></div>`;
-    }
-  } catch(e) { /* silencio */ }
+    if (wrap && data.urls?.small)
+      wrap.innerHTML = `<img class="msg-img" src="${data.urls.small}" alt="${data.alt_description||query}" loading="lazy">
+        <div class="img-caption">📷 ${data.alt_description||query}</div>`;
+  } catch(e) {}
 }
 
-// ═══════════════════════
-//  VOZ — WEB SPEECH API
-// ═══════════════════════
-let reconocimiento = null;
-let escuchando = false;
-
-function iniciarReconocimiento() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return null;
-  const r = new SR();
-  r.lang = 'es-AR';
-  r.continuous = false;
-  r.interimResults = true;
-
-  r.onstart = () => {
-    escuchando = true;
-    document.getElementById('btnMic').classList.add('escuchando');
-    document.getElementById('micHint').textContent = '🔴 Escuchando... hablá ahora';
-  };
-  r.onresult = e => {
-    let t = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-    document.getElementById('inputMsg').value = t;
-    if (e.results[e.resultIndex].isFinal)
-      document.getElementById('micHint').textContent = '✅ Listo — tocá enviar o seguí hablando';
-  };
-  r.onerror = e => {
-    detenerVoz();
-    const msgs = {
-      'not-allowed': '🎙️ Permiso de micrófono denegado. Habilitalo en el candado de la barra de dirección.',
-      'no-speech':   '🔇 No detecté voz. Hablá más cerca del micrófono.',
-      'network':     '🌐 Error de red al procesar la voz.'
-    };
-    document.getElementById('micHint').textContent = msgs[e.error] || 'Error de voz: ' + e.error;
-  };
-  r.onend = () => {
-    detenerVoz();
-    if (document.getElementById('inputMsg').value.trim())
-      document.getElementById('micHint').textContent = 'Tocá ▶ para enviar o seguí editando';
-  };
-  return r;
+// ════════════════════════════════════════
+//  SÍNTESIS DE VOZ
+// ════════════════════════════════════════
+function leerTexto(btn, bubId) {
+  if (voiceReading) {
+    window.speechSynthesis.cancel(); voiceReading = null;
+    document.querySelectorAll('.btn-leer').forEach(b => { b.classList.remove('leyendo'); b.textContent = '🔊 Escuchar'; });
+    return;
+  }
+  const bub = document.getElementById(bubId);
+  const textoEl = bub?.querySelector('.msg-texto');
+  if (!textoEl) return;
+  const utt = new SpeechSynthesisUtterance(textoEl.innerText);
+  utt.lang = 'es-AR'; utt.rate = 0.9; utt.pitch = 1;
+  const voces = window.speechSynthesis.getVoices();
+  const voz = voces.find(v => v.lang.startsWith('es')) || voces[0];
+  if (voz) utt.voice = voz;
+  utt.onend = () => { voiceReading = null; btn.classList.remove('leyendo'); btn.textContent = '🔊 Escuchar'; };
+  voiceReading = utt;
+  btn.classList.add('leyendo'); btn.textContent = '⏹ Detener';
+  window.speechSynthesis.speak(utt);
 }
+window.leerTexto = leerTexto;
 
+// ════════════════════════════════════════
+//  RECONOCIMIENTO DE VOZ
+// ════════════════════════════════════════
 function toggleVoz() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     document.getElementById('micHint').textContent = 'Tu navegador no soporta reconocimiento de voz. Usá Chrome.';
     return;
   }
   if (escuchando) { detenerVoz(); return; }
-  reconocimiento = iniciarReconocimiento();
-  if (reconocimiento) reconocimiento.start();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  reconocimiento = new SR();
+  reconocimiento.lang = 'es-AR'; reconocimiento.continuous = false; reconocimiento.interimResults = true;
+  reconocimiento.onstart = () => {
+    escuchando = true;
+    document.getElementById('btnMic').classList.add('escuchando');
+    document.getElementById('micHint').textContent = '🔴 Escuchando...';
+  };
+  reconocimiento.onresult = e => {
+    let t = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+    document.getElementById('inputMsg').value = t;
+    if (e.results[e.resultIndex].isFinal) document.getElementById('micHint').textContent = '✅ Listo — tocá enviar';
+  };
+  reconocimiento.onerror = e => {
+    detenerVoz();
+    const msgs = {'not-allowed':'🎙️ Permiso de micrófono denegado.','no-speech':'🔇 No detecté voz.','network':'🌐 Error de red.'};
+    document.getElementById('micHint').textContent = msgs[e.error] || 'Error: ' + e.error;
+  };
+  reconocimiento.onend = () => { detenerVoz(); };
+  reconocimiento.start();
 }
 window.toggleVoz = toggleVoz;
 
@@ -907,307 +918,120 @@ function detenerVoz() {
   if (reconocimiento) { try { reconocimiento.stop(); } catch(e){} }
 }
 
-// ═══════════════════════
-//  LEER RESPUESTA — SPEECH SYNTHESIS
-// ═══════════════════════
-function leerTexto(btn, bubId) {
-  if (voiceReading) {
-    window.speechSynthesis.cancel();
-    voiceReading = null;
-    document.querySelectorAll('.btn-leer').forEach(b => b.classList.remove('leyendo'));
-    return;
-  }
-  const bub = document.getElementById(bubId);
-  const textoEl = bub?.querySelector('.msg-texto');
-  if (!textoEl) return;
-  const texto = textoEl.innerText;
-
-  const utt = new SpeechSynthesisUtterance(texto);
-  utt.lang = 'es-AR';
-  utt.rate = 0.9;
-  utt.pitch = 1;
-
-  // Intentar voz en español
-  const voces = window.speechSynthesis.getVoices();
-  const vozES = voces.find(v => v.lang.startsWith('es')) || voces[0];
-  if (vozES) utt.voice = vozES;
-
-  utt.onend = () => {
-    voiceReading = null;
-    btn.classList.remove('leyendo');
-    btn.textContent = '🔊 Escuchar';
-  };
-
-  voiceReading = utt;
-  btn.classList.add('leyendo');
-  btn.textContent = '⏹ Detener';
-  window.speechSynthesis.speak(utt);
-}
-window.leerTexto = leerTexto;
-
-// ═══════════════════════
+// ════════════════════════════════════════
 //  PIN
-// ═══════════════════════
+// ════════════════════════════════════════
 function abrirPin(callback) {
-  pinActual = '';
-  pinTarget = callback;
+  pinActual = ''; pinTarget = callback;
   document.getElementById('pinError').textContent = '';
   actualizarDots();
-  document.getElementById('pinModal').classList.add('open');
+  document.getElementById('pinModal').classList.add('on');
 }
-
-function cerrarPin() {
-  document.getElementById('pinModal').classList.remove('open');
-  pinActual = '';
-  pinTarget = null;
-}
+function cerrarPin() { document.getElementById('pinModal').classList.remove('on'); pinActual = ''; pinTarget = null; }
 window.cerrarPin = cerrarPin;
-
-function pinInput(d) {
-  if (pinActual.length >= 4) return;
-  pinActual += d;
-  actualizarDots();
-  if (pinActual.length === 4) validarPin();
-}
+function pinInput(d) { if (pinActual.length >= 4) return; pinActual += d; actualizarDots(); if (pinActual.length === 4) validarPin(); }
 window.pinInput = pinInput;
-
-function pinBorrar() {
-  pinActual = pinActual.slice(0,-1);
-  actualizarDots();
-  document.getElementById('pinError').textContent = '';
-}
+function pinBorrar() { pinActual = pinActual.slice(0,-1); actualizarDots(); document.getElementById('pinError').textContent = ''; }
 window.pinBorrar = pinBorrar;
-
-function actualizarDots() {
-  for (let i = 1; i <= 4; i++) {
-    document.getElementById('pd' + i).classList.toggle('filled', i <= pinActual.length);
-  }
-}
-
+function actualizarDots() { for (let i=1;i<=4;i++) document.getElementById('pd'+i).classList.toggle('filled', i<=pinActual.length); }
 function validarPin() {
-  const pinValido = (perfilConfig.pinCuidador || PIN_CUIDADOR);
-  if (pinActual === pinValido) {
-    cerrarPin();
-    if (pinTarget) pinTarget();
-  } else {
-    document.getElementById('pinError').textContent = 'PIN incorrecto. Intentá de nuevo.';
-    pinActual = '';
-    actualizarDots();
-  }
+  const pin = perfilConfig.pinCuidador || PIN_DEFAULT;
+  if (pinActual === pin) { cerrarPin(); if (pinTarget) pinTarget(); }
+  else { document.getElementById('pinError').textContent = 'PIN incorrecto.'; pinActual = ''; actualizarDots(); }
 }
 
-// ═══════════════════════
+// ════════════════════════════════════════
 //  PANEL AVANCES
-// ═══════════════════════
-function abrirAvances() {
-  abrirPin(() => {
-    renderizarAvances();
-    document.getElementById('avancesOverlay').classList.add('open');
-    document.getElementById('avancesDrawer').classList.add('open');
-  });
-}
+// ════════════════════════════════════════
+function abrirAvances() { abrirPin(() => { renderizarAvances(); document.getElementById('avancesOverlay').classList.add('on'); document.getElementById('avancesDrawer').classList.add('on'); }); }
 window.abrirAvances = abrirAvances;
-
-function cerrarAvances() {
-  document.getElementById('avancesOverlay').classList.remove('open');
-  document.getElementById('avancesDrawer').classList.remove('open');
-}
+function cerrarAvances() { document.getElementById('avancesOverlay').classList.remove('on'); document.getElementById('avancesDrawer').classList.remove('on'); }
 window.cerrarAvances = cerrarAvances;
 
 function renderizarAvances() {
   const pc = perfilCognitivo;
-
-  // Stats
-  document.getElementById('statComprension').textContent = Math.round(pc.comprension) + '%';
-  document.getElementById('statVocabulario').textContent  = Math.round(pc.vocabulario)  + '%';
-  document.getElementById('statMotivacion').textContent   = Math.round(pc.motivacion)   + '%';
-  document.getElementById('statAtencion').textContent     = Math.round(pc.atencion)     + '%';
-  document.getElementById('statNivel').textContent        = pc.nivel;
-  document.getElementById('statMensajes').textContent     = pc.mensajes;
-
-  // Intereses
-  const iCont = document.getElementById('interesesAvances');
-  iCont.innerHTML = pc.intereses.length
-    ? pc.intereses.map(i => `<div class="interes-tag">${i}</div>`).join('')
-    : '<span style="color:var(--muted);font-size:.82rem">Todavía explorando...</span>';
-
-  // Diario sesiones
-  const dCont = document.getElementById('diarioContainer');
-  const todasSesiones = [...diarioSesiones];
-  if (pc.mensajes > 0) {
-    // Sesión actual (no guardada aún completamente)
-    const yaEnDiario = todasSesiones.find(s => s.fecha === HOY);
-    if (!yaEnDiario) todasSesiones.unshift({
-      fecha: HOY, mensajes: pc.mensajes,
-      temas: pc.temas.slice(-3), comprension: Math.round(pc.comprension)
-    });
-  }
-  dCont.innerHTML = todasSesiones.length
-    ? todasSesiones.slice(0,7).map(s => `
-        <div class="diario-item">
-          <div class="diario-fecha">${s.fecha}</div>
-          <b>${s.mensajes} mensajes</b> — Comprensión: ${s.comprension}%<br>
-          ${s.temas?.length ? 'Temas: ' + s.temas.join(', ') : ''}
-        </div>`).join('')
-    : '<div class="diario-item">Todavía no hay sesiones registradas.</div>';
-
-  // Gráfico evolución
+  document.getElementById('stComprension').textContent = Math.round(pc.comprension) + '%';
+  document.getElementById('stVocabulario').textContent  = Math.round(pc.vocabulario)  + '%';
+  document.getElementById('stMotivacion').textContent   = Math.round(pc.motivacion)   + '%';
+  document.getElementById('stNivel').textContent        = pc.nivel;
+  document.getElementById('stMensajes').textContent     = pc.mensajes;
+  document.getElementById('interesesAvances').innerHTML = pc.intereses.length
+    ? pc.intereses.map(i => `<span class="interes-tag">${i}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">Todavía explorando...</span>';
+  const todas = [...diarioSesiones];
+  if (pc.mensajes > 0 && !todas.find(s => s.fecha === HOY))
+    todas.unshift({ fecha:HOY, mensajes:pc.mensajes, temas:pc.temas.slice(-3), comprension:Math.round(pc.comprension) });
+  document.getElementById('diarioContainer').innerHTML = todas.length
+    ? todas.slice(0,7).map(s => `<div class="diario-item"><div class="diario-fecha">${s.fecha}</div>
+        <b>${s.mensajes} mensajes</b> — Comprensión: ${s.comprension}%<br>
+        ${s.temas?.length ? 'Temas: '+s.temas.join(', ') : ''}</div>`).join('')
+    : '<div class="diario-item">Sin sesiones aún.</div>';
   renderizarGrafico();
 }
 
 function renderizarGrafico() {
   const canvas = document.getElementById('graficoEvolucion');
   const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 300;
-  const H = 140;
-  canvas.width = W;
-  canvas.height = H;
-
-  const datos = evolucionData.length > 0 ? evolucionData : [{ fecha: HOY, comprension: Math.round(perfilCognitivo.comprension) }];
-
-  ctx.clearRect(0, 0, W, H);
-
-  // Fondo
-  ctx.fillStyle = '#1a2235';
-  ctx.fillRect(0, 0, W, H);
-
+  const W = canvas.offsetWidth || 300; const H = 140;
+  canvas.width = W; canvas.height = H;
+  const datos = evolucionData.length > 0 ? evolucionData : [{ fecha:HOY, comprension:Math.round(perfilCognitivo.comprension) }];
+  ctx.fillStyle = '#1a2235'; ctx.fillRect(0,0,W,H);
   if (datos.length < 2) {
-    // Un solo punto — mostrar mensaje
-    ctx.fillStyle = '#7a90b0';
-    ctx.font = '12px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Más sesiones generarán el gráfico de evolución', W/2, H/2);
-    return;
+    ctx.fillStyle = '#7a90b0'; ctx.font = '11px Inter'; ctx.textAlign = 'center';
+    ctx.fillText('Más sesiones generarán el gráfico', W/2, H/2); return;
   }
-
-  const pad = { t:16, r:16, b:28, l:40 };
-  const gW = W - pad.l - pad.r;
-  const gH = H - pad.t - pad.b;
-
-  const vals = datos.map(d => d.comprension);
-  const minV = Math.max(0, Math.min(...vals) - 10);
-  const maxV = Math.min(100, Math.max(...vals) + 10);
-
-  const xStep = gW / (datos.length - 1);
-  const yScale = v => pad.t + gH - ((v - minV) / (maxV - minV)) * gH;
-
-  // Grid lines
-  ctx.strokeStyle = '#1e2d47';
-  ctx.lineWidth = 1;
-  [0, 25, 50, 75, 100].forEach(v => {
-    if (v < minV || v > maxV) return;
-    const y = yScale(v);
-    ctx.beginPath();
-    ctx.moveTo(pad.l, y);
-    ctx.lineTo(W - pad.r, y);
-    ctx.stroke();
-    ctx.fillStyle = '#7a90b0';
-    ctx.font = '9px Inter';
-    ctx.textAlign = 'right';
-    ctx.fillText(v + '%', pad.l - 4, y + 3);
+  const pad = {t:14,r:14,b:26,l:38};
+  const gW = W-pad.l-pad.r; const gH = H-pad.t-pad.b;
+  const vals = datos.map(d=>d.comprension);
+  const minV = Math.max(0,Math.min(...vals)-10); const maxV = Math.min(100,Math.max(...vals)+10);
+  const xS = gW/(datos.length-1);
+  const yS = v => pad.t+gH-((v-minV)/(maxV-minV))*gH;
+  ctx.strokeStyle='#1e2d47'; ctx.lineWidth=1;
+  [0,25,50,75,100].forEach(v => {
+    if(v<minV||v>maxV)return;
+    const y=yS(v); ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle='#7a90b0'; ctx.font='9px Inter'; ctx.textAlign='right'; ctx.fillText(v+'%',pad.l-3,y+3);
   });
-
-  // Área bajo la curva
-  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
-  grad.addColorStop(0, 'rgba(79,209,197,0.3)');
-  grad.addColorStop(1, 'rgba(79,209,197,0)');
-  ctx.beginPath();
-  ctx.moveTo(pad.l, yScale(datos[0].comprension));
-  datos.forEach((d, i) => { if (i > 0) ctx.lineTo(pad.l + i * xStep, yScale(d.comprension)); });
-  ctx.lineTo(pad.l + (datos.length-1) * xStep, H - pad.b);
-  ctx.lineTo(pad.l, H - pad.b);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Línea
-  ctx.beginPath();
-  ctx.strokeStyle = '#4fd1c5';
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  datos.forEach((d, i) => {
-    const x = pad.l + i * xStep;
-    const y = yScale(d.comprension);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
+  const grad = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(79,209,197,.3)'); grad.addColorStop(1,'rgba(79,209,197,0)');
+  ctx.beginPath(); ctx.moveTo(pad.l,yS(datos[0].comprension));
+  datos.forEach((d,i)=>{ if(i>0) ctx.lineTo(pad.l+i*xS,yS(d.comprension)); });
+  ctx.lineTo(pad.l+(datos.length-1)*xS,H-pad.b); ctx.lineTo(pad.l,H-pad.b);
+  ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle='#4fd1c5'; ctx.lineWidth=2; ctx.lineJoin='round';
+  datos.forEach((d,i)=>{ const x=pad.l+i*xS; const y=yS(d.comprension); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
   ctx.stroke();
-
-  // Puntos
-  datos.forEach((d, i) => {
-    const x = pad.l + i * xStep;
-    const y = yScale(d.comprension);
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI*2);
-    ctx.fillStyle = '#4fd1c5';
-    ctx.fill();
-    ctx.strokeStyle = '#0a0e17';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+  datos.forEach((d,i)=>{
+    const x=pad.l+i*xS; const y=yS(d.comprension);
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fillStyle='#4fd1c5'; ctx.fill();
+    ctx.strokeStyle='#0a0e17'; ctx.lineWidth=1.5; ctx.stroke();
   });
-
-  // Labels eje X (solo primera y última)
-  ctx.fillStyle = '#7a90b0';
-  ctx.font = '9px Inter';
-  ctx.textAlign = 'center';
-  const labelFecha = f => f.slice(5); // MM-DD
-  ctx.fillText(labelFecha(datos[0].fecha), pad.l, H - 4);
-  if (datos.length > 1) ctx.fillText(labelFecha(datos[datos.length-1].fecha), pad.l + (datos.length-1)*xStep, H-4);
+  ctx.fillStyle='#7a90b0'; ctx.font='9px Inter'; ctx.textAlign='center';
+  ctx.fillText(datos[0].fecha.slice(5),pad.l,H-4);
+  if(datos.length>1) ctx.fillText(datos[datos.length-1].fecha.slice(5),pad.l+(datos.length-1)*xS,H-4);
 }
 
-// ═══════════════════════
-//  5 TOQUES LOGO → PIN ADMIN
-// ═══════════════════════
-let logoTaps = 0, logoTimer = null;
+// ════════════════════════════════════════
+//  5 TOQUES LOGO → ADMIN
+// ════════════════════════════════════════
+let logoTaps=0, logoTimer=null;
 document.getElementById('logoTap').addEventListener('click', () => {
   logoTaps++;
   clearTimeout(logoTimer);
-  logoTimer = setTimeout(() => { logoTaps = 0; }, 2000);
-  if (logoTaps >= 5) {
-    logoTaps = 0;
-    abrirPin(() => mostrarToast('🔧 Modo admin activo'));
-  }
+  logoTimer = setTimeout(()=>{ logoTaps=0; }, 2000);
+  if (logoTaps >= 5) { logoTaps=0; abrirPin(()=>mostrarToast('🔧 Modo admin')); }
 });
 
-// ═══════════════════════
+// ════════════════════════════════════════
 //  UTILS
-// ═══════════════════════
-function escapeHTML(t) {
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
+// ════════════════════════════════════════
+function escapeHTML(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function mostrarToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'), 2500);
 }
 window.mostrarToast = mostrarToast;
-
-// ═══════════════════════
-//  INIT
-// ═══════════════════════
-window.addEventListener('load', () => {
-  // Cargar perfil desde localStorage
-  const guardado = localStorage.getItem('mtc-perfil');
-  if (guardado) {
-    try {
-      perfilConfig = JSON.parse(guardado);
-      aplicarPerfilEnUI();
-    } catch(e) {}
-  }
-
-  // Mensaje inicial
-  setTimeout(() => {
-    const nombre = perfilConfig.nombre;
-    const saludo = nombre
-      ? `¡Hola, ${nombre}! Soy tu compañero de aprendizaje. 🧠\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`
-      : `¡Hola! Soy tu compañero de aprendizaje. 🧠\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`;
-    agregarMsgAI(saludo, true);
-  }, 400);
-
-  // Firebase
-  initFirebase();
-});
 </script>
 </body>
 </html>
