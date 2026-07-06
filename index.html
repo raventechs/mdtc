@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- MTC v1.1 — fix API key, perfil persistente, errores de voz -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -551,7 +552,7 @@ window.cerrarPerfil = cerrarPerfil;
 
 function cargarPerfilEnUI() {
   const p = perfilConfig;
-  if (!p || !p.nombre) return;
+  if (!p || Object.keys(p).length === 0) return;
   if (p.nombre) document.getElementById('pNombre').value = p.nombre;
   if (p.edad) document.getElementById('pEdad').value = p.edad;
   if (p.nivelEscolar) document.getElementById('pNivelEscolar').value = p.nivelEscolar;
@@ -589,7 +590,7 @@ window.guardarPerfil = guardarPerfil;
 
 function aplicarPerfilEnUI() {
   const p = perfilConfig;
-  if (!p) return;
+  if (!p || Object.keys(p).length === 0) return;
   const btnCfg = document.getElementById('btnConfig');
   btnCfg.textContent = p.nombre ? `⚙️ ${p.nombre}` : '⚙️ Perfil ✓';
   btnCfg.classList.add('guardado');
@@ -735,7 +736,12 @@ async function llamarAPI(userMsg) {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': 'TU_ANTHROPIC_KEY_AQUI',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1000,
@@ -756,7 +762,8 @@ async function llamarAPI(userMsg) {
   } catch(e) {
     quitarTyping();
     document.getElementById('btnSend').disabled = false;
-    agregarMsgAI('Hubo un problema de conexión. Intentá de nuevo en un momento.', true);
+    const detalle = e.message || 'desconocido';
+    agregarMsgAI('⚠️ No pude conectarme con el servidor. Verificá tu conexión e intentá de nuevo. (' + detalle + ')', true);
   }
 }
 
@@ -868,8 +875,12 @@ function iniciarReconocimiento() {
   };
   r.onerror = e => {
     detenerVoz();
-    const msgs = { 'not-allowed':'Permiso de micrófono denegado.', 'no-speech':'No detecté voz.', 'network':'Error de red.' };
-    document.getElementById('micHint').textContent = msgs[e.error] || 'Error: ' + e.error;
+    const msgs = {
+      'not-allowed': '🎙️ Permiso de micrófono denegado. Habilitalo en el candado de la barra de dirección.',
+      'no-speech':   '🔇 No detecté voz. Hablá más cerca del micrófono.',
+      'network':     '🌐 Error de red al procesar la voz.'
+    };
+    document.getElementById('micHint').textContent = msgs[e.error] || 'Error de voz: ' + e.error;
   };
   r.onend = () => {
     detenerVoz();
