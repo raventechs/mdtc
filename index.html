@@ -721,13 +721,19 @@ function agregarMsgAI(textoRaw, sinMedia) {
 
   if (!sinMedia) {
     if (tipo === 'imagen' && keyword) {
+      // Claude indicó keyword explícita → Unsplash directo
       buscarImagen(keyword, bubId);
     } else if (tipo === 'video' && keyword) {
       mostrarVideo(keyword, bubId);
-    } else if (!tipo) {
-      // Sin tag explícito: solo SVG si el texto es abstracto (> 60 chars)
-      const esAbstracto = /memori|recuerd|olvid|emocion|emoci|sentim|tristez|alegr|miedo|ansiedad|pens|idea|concept|reflex/i.test(texto);
-      if (esAbstracto && texto.length > 60) mostrarSVGAbstracto(bubId, texto);
+    } else if (!tipo && texto.length > 60) {
+      // Sin tag: intentar extractor automático
+      const kwAuto = extraerKeywordVisual(texto);
+      if (kwAuto) {
+        buscarImagen(kwAuto, bubId);
+      } else {
+        // Texto puramente abstracto: SVG animado
+        mostrarSVGAbstracto(bubId, texto);
+      }
     }
   }
 }
@@ -952,8 +958,7 @@ async function buscarImagen(query, bubId) {
       wrap.innerHTML = `<div class="msg-media"><img src="${data.urls.small}" alt="${data.alt_description||query}" loading="lazy"><div class="media-caption">📷 ${data.alt_description||query}</div></div>`;
     }
   } catch(e) {
-    // Si Unsplash falla, mostrar SVG abstracto
-    mostrarSVGAbstracto(bubId, '');
+    mostrarSVGAbstracto(bubId, query);
   }
 }
 
@@ -970,18 +975,47 @@ function mostrarSVGAbstracto(bubId, texto) {
   wrap.innerHTML = `<div class="msg-media">${elegirSVGAbstracto(texto)}</div>`;
 }
 
-// Imagen de bienvenida al inicio (1 vez por sesión, basada en intereses del perfil)
+// ── Extractor automático de keyword visual desde texto ──
+const PALABRAS_ABSTRACTAS = new Set([
+  'memoria','recuerdo','emocion','emoción','sentimiento','tristeza','alegría','alegria',
+  'miedo','ansiedad','pensamiento','idea','concepto','reflexión','reflexion','aprendizaje',
+  'comprensión','comprension','conciencia','mente','cerebro','proceso','experiencia',
+  'tiempo','vida','mundo','persona','gente','manera','forma','cosa','algo','todo',
+  'momento','lugar','parte','tipo','caso','vez','modo','nivel','estado','punto'
+]);
+const STOPWORDS_EXT = new Set([
+  'que','como','para','por','con','una','uno','los','las','del','también','tambien',
+  'pero','más','mas','muy','este','esta','eso','cuando','donde','tiene','podés','podes',
+  'puede','algo','todo','cada','sobre','entre','desde','hasta','siempre','nunca',
+  'porque','aunque','mientras','después','despues','antes','durante','hacia','dentro'
+]);
+
+function extraerKeywordVisual(texto) {
+  const palabras = texto.toLowerCase()
+    .replace(/[¿?¡!.,;:()
+"]/g, ' ')
+    .split(/\s+/)
+    .filter(p => p.length > 4 && !STOPWORDS_EXT.has(p) && !PALABRAS_ABSTRACTAS.has(p));
+  // Preferir sustantivos concretos (heurística: sin terminaciones abstractas)
+  const concretas = palabras.filter(p =>
+    !/ción$|cion$|idad$|ismo$|anza$|encia$|mente$|aje$/.test(p)
+  );
+  const candidatos = concretas.length ? concretas : palabras;
+  return [...new Set(candidatos)].slice(0, 2).join(' ') || null;
+}
+
+// ── Imagen de bienvenida (nombre + ciudad del perfil, o fallback cognitivo) ──
 async function mostrarImagenInicio() {
-  const intereses = perfilCognitivo.intereses;
-  const TEMAS_VISUALES = {
-    tecnologia:'technology innovation', autos:'classic cars', musica:'music instruments',
-    futbol:'soccer stadium', animales:'animals nature', cocina:'delicious food',
-    historia:'ancient history', naturaleza:'beautiful nature', arte:'colorful art painting',
-    videojuegos:'retro video games'
-  };
-  const keyword = intereses.length
-    ? (TEMAS_VISUALES[intereses[0]] || 'beautiful landscape argentina')
-    : 'beautiful landscape argentina';
+  const pf = perfilConfig;
+  let keyword = 'cognitive brain neuroscience';
+  if (pf) {
+    const partes = [];
+    if (pf.nombre) partes.push(pf.nombre);
+    // ciudad no está en el perfil actual; si se agrega en el futuro se suma acá
+    if (partes.length) keyword = partes.join(' ') + ' portrait warm';
+    // Si solo hay nombre, buscar algo evocador del nombre
+    if (pf.nombre && !pf.ciudad) keyword = `${pf.nombre} happy elderly person`;
+  }
   try {
     const res = await fetch(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&client_id=${UNSPLASH_KEY}`);
     if (!res.ok) return;
