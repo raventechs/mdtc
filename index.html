@@ -170,6 +170,16 @@ textarea::placeholder{color:var(--muted)}
 /* ── API ERROR ── */
 .api-error{background:rgba(239,68,68,.1);border:1px solid var(--danger);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:var(--danger);margin-top:8px;display:none}
 .api-error.on{display:block}
+
+/* ── MEDIA (imagen, SVG animado, video) ── */
+.msg-media{margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface2)}
+.msg-media img{width:100%;max-width:320px;display:block;border-radius:12px}
+.msg-media iframe{width:100%;max-width:320px;height:180px;display:block;border:none}
+.msg-media svg{width:100%;max-width:320px;display:block}
+.media-caption{font-size:0.66rem;color:var(--muted);padding:5px 10px;font-style:italic}
+.media-inicio{width:100%;max-width:680px;margin:0 auto 4px;border-radius:14px;overflow:hidden;border:1px solid var(--border);position:relative}
+.media-inicio img{width:100%;max-height:180px;object-fit:cover;display:block;filter:brightness(.85)}
+.media-inicio-label{position:absolute;bottom:8px;left:12px;font-size:0.68rem;color:rgba(255,255,255,.7);font-style:italic}
 </style>
 </head>
 <body>
@@ -650,6 +660,16 @@ REGLAS ABSOLUTAS:
 8. Si el usuario parece cansado o frustrado, cambiás de tema suavemente.
 9. Tono cálido, sin condescendencia. Emojis ocasionales, nunca en exceso.
 
+MEDIA VISUAL (IMPORTANTE):
+- Podés incluir UN tag de media por respuesta, solo si suma claridad real al tema.
+- Si el concepto es visual o concreto (un animal, un lugar, un objeto, un paisaje): escribe [MEDIA: keyword_en_ingles] al final de la respuesta.
+- Si el concepto es abstracto (memoria, emoción, pensamiento, sentimientos): NO uses [MEDIA], el sistema generará animación automáticamente.
+- Si querés un video corto ilustrativo (máx 15 seg): escribe [VIDEO: keyword_en_ingles] al final.
+- Si no hay imagen pertinente, NO pongas ningún tag. Silencio es mejor que una imagen desconectada.
+- Ejemplo correcto: "...los delfines son muy inteligentes. [MEDIA: dolphin ocean]"
+- Ejemplo correcto: "...así funciona un motor. [VIDEO: car engine animation]"
+- Ejemplo INCORRECTO: poner [MEDIA] en respuestas sobre recuerdos, tristeza, ideas, conceptos.
+
 Tu objetivo: que el usuario sienta que esta app fue hecha exclusivamente para él.`;
 }
 
@@ -661,6 +681,7 @@ function mostrarMensajeInicial() {
   const saludo = nombre
     ? `¡Hola, ${nombre}! 🧠 Ya cargué tu perfil.\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`
     : `¡Hola! Soy tu compañero de aprendizaje. 🧠\n\nNo te voy a evaluar ni a dar notas. Solo quiero entender cómo pensás vos, para explicarte las cosas de la manera que más te sirve.\n\n¿Sobre qué te gustaría saber algo hoy?`;
+  mostrarImagenInicio();
   agregarMsgAI(saludo, true);
 }
 
@@ -676,25 +697,38 @@ function agregarMsgUser(texto) {
   historial.push({ role:'user', content:texto });
 }
 
-function agregarMsgAI(texto, sinImagen) {
+function agregarMsgAI(textoRaw, sinMedia) {
   const chat = document.getElementById('chatArea');
   const div  = document.createElement('div');
   div.className = 'msg ai';
   const bubId = 'bub-' + Date.now();
+
+  // Extraer tags de media y limpiar el texto visible
+  const { tipo, keyword } = extraerTagMedia(textoRaw);
+  const texto = limpiarTagsMedia(textoRaw);
+
   div.innerHTML = `<div class="msg-avatar">🧠</div>
     <div class="msg-bubble" id="${bubId}">
       <div class="msg-tag">MTC</div>
       <div class="msg-texto">${texto.replace(/\n/g,'<br>')}</div>
       <button class="btn-leer" onclick="leerTexto(this,'${bubId}')">🔊 Escuchar</button>
-      <div id="img-${bubId}"></div>
+      <div id="media-${bubId}"></div>
     </div>`;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   if (!historial.length || historial[historial.length-1].role !== 'assistant')
     historial.push({ role:'assistant', content:texto });
-  if (!sinImagen && texto.length > 80) {
-    const kw = extraerKeywords(texto);
-    if (kw) buscarImagen(kw, bubId);
+
+  if (!sinMedia) {
+    if (tipo === 'imagen' && keyword) {
+      buscarImagen(keyword, bubId);
+    } else if (tipo === 'video' && keyword) {
+      mostrarVideo(keyword, bubId);
+    } else if (!tipo) {
+      // Sin tag explícito: solo SVG si el texto es abstracto (> 60 chars)
+      const esAbstracto = /memori|recuerd|olvid|emocion|emoci|sentim|tristez|alegr|miedo|ansiedad|pens|idea|concept|reflex/i.test(texto);
+      if (esAbstracto && texto.length > 60) mostrarSVGAbstracto(bubId, texto);
+    }
   }
 }
 
@@ -833,25 +867,131 @@ function actualizarPerfil(pregunta, respuesta) {
 }
 
 // ════════════════════════════════════════
-//  UNSPLASH IMÁGENES
+//  SISTEMA DE MEDIA (Unsplash + SVG animado + YouTube)
 // ════════════════════════════════════════
-const STOPWORDS = ['que','como','para','por','con','una','uno','los','las','del','también','pero','más','muy','este','esta','eso','cuando','donde','tiene','podés','puede','algo','todo','cada'];
 
-function extraerKeywords(texto) {
-  const palabras = texto.toLowerCase().replace(/[¿?¡!.,;:()\n]/g,' ').split(' ')
-    .filter(p => p.length > 4 && !STOPWORDS.includes(p));
-  return [...new Set(palabras)].slice(0,2).join(' ');
+// SVGs animados para conceptos abstractos
+const SVG_ABSTRACTOS = {
+  memoria: `<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="160" fill="#111827"/>
+    <circle cx="160" cy="80" r="50" fill="none" stroke="#4fd1c5" stroke-width="1.5" opacity="0.3">
+      <animate attributeName="r" values="50;65;50" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.1;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="160" cy="80" r="30" fill="none" stroke="#667eea" stroke-width="1.5" opacity="0.5">
+      <animate attributeName="r" values="30;40;30" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="160" cy="80" r="8" fill="#4fd1c5" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="160" y1="80" x2="110" y2="50" stroke="#4fd1c5" stroke-width="1" opacity="0.4"/>
+    <line x1="160" y1="80" x2="210" y2="55" stroke="#667eea" stroke-width="1" opacity="0.4"/>
+    <line x1="160" y1="80" x2="190" y2="120" stroke="#f6ad55" stroke-width="1" opacity="0.4"/>
+    <circle cx="110" cy="50" r="4" fill="#4fd1c5" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="2.3s" repeatCount="indefinite"/></circle>
+    <circle cx="210" cy="55" r="4" fill="#667eea" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.8s" repeatCount="indefinite"/></circle>
+    <circle cx="190" cy="120" r="4" fill="#f6ad55" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="2.7s" repeatCount="indefinite"/></circle>
+    <text x="160" y="148" text-anchor="middle" font-size="10" fill="#7a90b0" font-family="Inter,sans-serif">conexiones de memoria</text>
+  </svg>`,
+  emocion: `<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="160" fill="#111827"/>
+    <path d="M160 120 C100 90 60 60 80 30 C95 10 125 15 160 45 C195 15 225 10 240 30 C260 60 220 90 160 120Z" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="1.2s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="scale" values="1 1;1.05 1.05;1 1" dur="1.2s" additive="sum" repeatCount="indefinite" transformOrigin="160 75"/>
+    </path>
+    <path d="M160 110 C110 85 75 58 92 32 C105 14 130 18 160 45 C190 18 215 14 228 32 C245 58 210 85 160 110Z" fill="rgba(239,68,68,0.15)">
+      <animate attributeName="fill-opacity" values="0.15;0.3;0.15" dur="1.2s" repeatCount="indefinite"/>
+    </path>
+    <text x="160" y="148" text-anchor="middle" font-size="10" fill="#7a90b0" font-family="Inter,sans-serif">emoción</text>
+  </svg>`,
+  pensamiento: `<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="160" fill="#111827"/>
+    <polyline points="40,120 80,60 120,90 160,30 200,80 240,50 280,100" fill="none" stroke="#4fd1c5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <animate attributeName="stroke-dasharray" values="0,600;600,0" dur="3s" repeatCount="indefinite"/>
+    </polyline>
+    <circle cx="160" cy="30" r="5" fill="#667eea"><animate attributeName="r" values="5;8;5" dur="1s" repeatCount="indefinite"/></circle>
+    <text x="160" y="148" text-anchor="middle" font-size="10" fill="#7a90b0" font-family="Inter,sans-serif">flujo de pensamiento</text>
+  </svg>`,
+  default: `<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="160" fill="#111827"/>
+    <circle cx="80" cy="80" r="20" fill="none" stroke="#4fd1c5" stroke-width="1.5" opacity="0.5"><animate attributeName="r" values="20;28;20" dur="2s" repeatCount="indefinite"/></circle>
+    <circle cx="160" cy="80" r="20" fill="none" stroke="#667eea" stroke-width="1.5" opacity="0.5"><animate attributeName="r" values="20;28;20" dur="2.5s" repeatCount="indefinite"/></circle>
+    <circle cx="240" cy="80" r="20" fill="none" stroke="#f6ad55" stroke-width="1.5" opacity="0.5"><animate attributeName="r" values="20;28;20" dur="1.8s" repeatCount="indefinite"/></circle>
+    <text x="160" y="148" text-anchor="middle" font-size="10" fill="#7a90b0" font-family="Inter,sans-serif">procesando ideas</text>
+  </svg>`
+};
+
+function elegirSVGAbstracto(texto) {
+  const t = texto.toLowerCase();
+  if (/memori|recuerd|olvid|pasad/.test(t)) return SVG_ABSTRACTOS.memoria;
+  if (/emocion|emoci|sentim|tristez|alegr|miedo|ansiedad/.test(t)) return SVG_ABSTRACTOS.emocion;
+  if (/pens|idea|concept|reflex|abstract/.test(t)) return SVG_ABSTRACTOS.pensamiento;
+  return SVG_ABSTRACTOS.default;
+}
+
+function extraerTagMedia(texto) {
+  const mImg = texto.match(/\[MEDIA:\s*([^\]]+)\]/i);
+  const mVid = texto.match(/\[VIDEO:\s*([^\]]+)\]/i);
+  return {
+    tipo: mImg ? 'imagen' : mVid ? 'video' : null,
+    keyword: mImg ? mImg[1].trim() : mVid ? mVid[1].trim() : null
+  };
+}
+
+function limpiarTagsMedia(texto) {
+  return texto.replace(/\[(MEDIA|VIDEO):[^\]]+\]/gi, '').trim();
 }
 
 async function buscarImagen(query, bubId) {
   try {
     const res = await fetch(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`);
+    if (!res.ok) throw new Error('no result');
+    const data = await res.json();
+    const wrap = document.getElementById('media-' + bubId);
+    if (!wrap) return;
+    if (data.urls?.small) {
+      wrap.innerHTML = `<div class="msg-media"><img src="${data.urls.small}" alt="${data.alt_description||query}" loading="lazy"><div class="media-caption">📷 ${data.alt_description||query}</div></div>`;
+    }
+  } catch(e) {
+    // Si Unsplash falla, mostrar SVG abstracto
+    mostrarSVGAbstracto(bubId, '');
+  }
+}
+
+function mostrarVideo(keyword, bubId) {
+  const wrap = document.getElementById('media-' + bubId);
+  if (!wrap) return;
+  const q = encodeURIComponent(keyword);
+  wrap.innerHTML = `<div class="msg-media"><iframe src="https://www.youtube.com/embed?listType=search&list=${q}&autoplay=1&mute=1&controls=0&end=15&modestbranding=1" allowfullscreen allow="autoplay"></iframe><div class="media-caption">▶ ${keyword}</div></div>`;
+}
+
+function mostrarSVGAbstracto(bubId, texto) {
+  const wrap = document.getElementById('media-' + bubId);
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="msg-media">${elegirSVGAbstracto(texto)}</div>`;
+}
+
+// Imagen de bienvenida al inicio (1 vez por sesión, basada en intereses del perfil)
+async function mostrarImagenInicio() {
+  const intereses = perfilCognitivo.intereses;
+  const TEMAS_VISUALES = {
+    tecnologia:'technology innovation', autos:'classic cars', musica:'music instruments',
+    futbol:'soccer stadium', animales:'animals nature', cocina:'delicious food',
+    historia:'ancient history', naturaleza:'beautiful nature', arte:'colorful art painting',
+    videojuegos:'retro video games'
+  };
+  const keyword = intereses.length
+    ? (TEMAS_VISUALES[intereses[0]] || 'beautiful landscape argentina')
+    : 'beautiful landscape argentina';
+  try {
+    const res = await fetch(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&orientation=landscape&client_id=${UNSPLASH_KEY}`);
     if (!res.ok) return;
     const data = await res.json();
-    const wrap = document.getElementById('img-' + bubId);
-    if (wrap && data.urls?.small)
-      wrap.innerHTML = `<img class="msg-img" src="${data.urls.small}" alt="${data.alt_description||query}" loading="lazy">
-        <div class="img-caption">📷 ${data.alt_description||query}</div>`;
+    if (!data.urls?.regular) return;
+    const chat = document.getElementById('chatArea');
+    const div = document.createElement('div');
+    div.className = 'media-inicio';
+    div.innerHTML = `<img src="${data.urls.regular}" alt="${keyword}" loading="lazy"><div class="media-inicio-label">📷 ${data.alt_description || keyword}</div>`;
+    chat.insertBefore(div, chat.firstChild);
   } catch(e) {}
 }
 
@@ -1035,3 +1175,4 @@ window.mostrarToast = mostrarToast;
 </script>
 </body>
 </html>
+
