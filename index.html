@@ -171,6 +171,86 @@ textarea::placeholder{color:var(--muted)}
 .api-error{background:rgba(239,68,68,.1);border:1px solid var(--danger);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:var(--danger);margin-top:8px;display:none}
 .api-error.on{display:block}
 
+/* ── NAV INFERIOR ── */
+.bottom-nav{display:flex;background:var(--surface);border-top:1px solid var(--border);position:sticky;bottom:0;z-index:50}
+.nav-btn{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:transparent;color:var(--muted);font-size:0.68rem;font-weight:600;cursor:pointer;transition:color .2s;font-family:var(--font)}
+.nav-btn.active{color:var(--accent)}
+.nav-btn svg{width:20px;height:20px}
+
+/* ── SECCIÓN JUEGOS ── */
+#seccionJuegos{display:none;flex-direction:column;flex:1;overflow-y:auto;padding:16px}
+#seccionJuegos.on{display:flex}
+#seccionChat{display:flex;flex-direction:column;flex:1;overflow:hidden}
+
+.juegos-plus-lock{background:var(--surface2);border:1.5px solid var(--accent);border-radius:14px;padding:28px 20px;text-align:center;margin:auto}
+.juegos-plus-icon{font-size:44px;margin-bottom:12px}
+.juegos-plus-title{font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:8px}
+.juegos-plus-sub{font-size:0.8rem;color:var(--muted);line-height:1.6}
+
+.juegos-filtro{margin-bottom:16px}
+.filtro-label{font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.filtro-chips{display:flex;flex-wrap:wrap;gap:6px}
+.filtro-chip{padding:5px 14px;border-radius:99px;font-size:0.75rem;font-weight:600;border:1.5px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;background:transparent}
+.filtro-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(129,140,248,.1)}
+
+.juegos-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.juego-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:18px 14px;cursor:pointer;transition:all .2s;text-align:center}
+.juego-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.juego-card:active{transform:scale(.97)}
+.juego-icon{font-size:36px;margin-bottom:8px}
+.juego-nombre{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.juego-desc{font-size:0.7rem;color:var(--muted);line-height:1.4}
+.juego-badge{display:inline-block;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:6px;background:rgba(129,140,248,.15);color:var(--accent)}
+
+/* ── JUEGO ACTIVO ── */
+.juego-activo{display:none;flex-direction:column;flex:1}
+.juego-activo.on{display:flex}
+.juego-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.btn-volver{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:0.78rem;font-weight:600;cursor:pointer}
+.juego-titulo{font-size:1rem;font-weight:700;flex:1}
+.juego-score{font-family:var(--mono,monospace);font-size:0.78rem;color:var(--accent);font-weight:700}
+
+/* SOPA DE LETRAS */
+.sopa-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+.sopa-grid{display:inline-grid;gap:2px;user-select:none;touch-action:none}
+.sopa-cell{width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono,monospace);font-size:0.9rem;font-weight:700;border-radius:6px;
+  background:var(--surface2);color:var(--text);cursor:pointer;transition:all .15s;border:1.5px solid transparent}
+.sopa-cell.sel{background:rgba(129,140,248,.25);border-color:var(--accent);color:var(--accent)}
+.sopa-cell.encontrado{background:rgba(63,185,80,.2);border-color:#3fb950;color:#3fb950}
+.sopa-palabras{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:340px}
+.sopa-palabra{font-size:0.72rem;font-weight:700;padding:4px 12px;border-radius:20px;
+  background:var(--surface2);color:var(--muted);border:1.5px solid var(--border);transition:all .2s}
+.sopa-palabra.encontrada{background:rgba(63,185,80,.15);color:#3fb950;border-color:#3fb950;text-decoration:line-through}
+
+/* MEMORIA VISUAL */
+.memoria-grid{display:grid;gap:10px;width:100%;max-width:340px;margin:0 auto}
+.memoria-card{aspect-ratio:1;border-radius:12px;cursor:pointer;perspective:600px;position:relative}
+.memoria-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .4s}
+.memoria-card.flipped .memoria-inner{transform:rotateY(180deg)}
+.memoria-front,.memoria-back{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;display:flex;align-items:center;justify-content:center}
+.memoria-front{background:var(--surface2);border:1.5px solid var(--border);font-size:1.4rem}
+.memoria-back{background:rgba(129,140,248,.1);border:1.5px solid var(--accent);transform:rotateY(180deg);font-size:1.8rem}
+.memoria-card.matched .memoria-front{background:rgba(63,185,80,.15);border-color:#3fb950}
+.memoria-card.matched .memoria-back{background:rgba(63,185,80,.15);border-color:#3fb950}
+
+/* PARES */
+.pares-grid{display:grid;gap:10px;width:100%;max-width:340px;margin:0 auto}
+.par-card{border-radius:12px;padding:14px;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--surface2);text-align:center;transition:all .2s}
+.par-card.sel{border-color:var(--accent);background:rgba(129,140,248,.1)}
+.par-card.matched{border-color:#3fb950;background:rgba(63,185,80,.1)}
+.par-card.wrong{border-color:var(--danger);background:rgba(239,68,68,.1);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.par-emoji{font-size:2rem;margin-bottom:4px}
+.par-texto{font-size:0.72rem;color:var(--muted)}
+
+.juego-resultado{text-align:center;padding:20px;background:var(--surface);border-radius:14px;margin-top:12px}
+.resultado-emoji{font-size:48px;margin-bottom:8px}
+.resultado-msg{font-size:1rem;font-weight:700;margin-bottom:6px}
+.resultado-sub{font-size:0.8rem;color:var(--muted);margin-bottom:16px}
+.btn-jugar-de-nuevo{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.85rem;font-weight:700;cursor:pointer}
+
 /* ── MEDIA (imagen, SVG animado, video) ── */
 .msg-media{margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface2)}
 .msg-media img{width:100%;max-width:320px;display:block;border-radius:12px}
@@ -239,39 +319,64 @@ textarea::placeholder{color:var(--muted)}
     <div class="interes-chip" id="int-videojuegos">🎮 videojuegos</div>
   </div>
 
-  <!-- CHAT -->
-  <div class="chat-area" id="chatArea"></div>
+  <!-- SECCIÓN CHAT -->
+  <div id="seccionChat">
+    <!-- CHAT -->
+    <div class="chat-area" id="chatArea"></div>
 
-  <!-- SUGERENCIAS -->
-  <div class="sugerencias" id="sugerencias">
-    <button class="sug" onclick="enviarSugerencia(this)">¿Qué es la inteligencia artificial?</button>
-    <button class="sug" onclick="enviarSugerencia(this)">Explicame cómo funciona un motor</button>
-    <button class="sug" onclick="enviarSugerencia(this)">¿Por qué se mueven las nubes?</button>
+    <!-- SUGERENCIAS -->
+    <div class="sugerencias" id="sugerencias">
+      <button class="sug" onclick="enviarSugerencia(this)">¿Qué es la inteligencia artificial?</button>
+      <button class="sug" onclick="enviarSugerencia(this)">Explicame cómo funciona un motor</button>
+      <button class="sug" onclick="enviarSugerencia(this)">¿Por qué se mueven las nubes?</button>
+    </div>
+
+    <!-- API ERROR -->
+    <div class="api-error" id="apiError"></div>
+
+    <!-- INPUT -->
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="inputMsg" placeholder="Preguntame cualquier cosa..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        <button class="btn-icon" id="btnMic" onclick="toggleVoz()" title="Hablar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <button class="btn-send" id="btnSend" onclick="enviar()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="mic-hint" id="micHint"></div>
+    </div>
   </div>
 
-  <!-- API ERROR -->
-  <div class="api-error" id="apiError"></div>
+  <!-- SECCIÓN JUEGOS (PLUS) -->
+  <div id="seccionJuegos">
+    <!-- contenido generado por JS -->
+  </div>
 
-  <!-- INPUT -->
-  <div class="input-area">
-    <div class="input-wrap">
-      <textarea id="inputMsg" placeholder="Preguntame cualquier cosa..." rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"
-        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-      <button class="btn-icon" id="btnMic" onclick="toggleVoz()" title="Hablar">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-        </svg>
-      </button>
-      <button class="btn-send" id="btnSend" onclick="enviar()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
-      </button>
-    </div>
-    <div class="mic-hint" id="micHint"></div>
+  <!-- NAV INFERIOR -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="navChat" onclick="cambiarSeccion('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      Chat
+    </button>
+    <button class="nav-btn" id="navJuegos" onclick="cambiarSeccion('juegos')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="6" width="20" height="12" rx="3"/>
+        <path d="M12 10v4M10 12h4M17 12h.01M15 12h.01"/>
+      </svg>
+      Juegos ⭐
+    </button>
   </div>
 </div>
 
@@ -1206,6 +1311,230 @@ function mostrarToast(msg) {
   setTimeout(()=>t.classList.remove('on'), 2500);
 }
 window.mostrarToast = mostrarToast;
+
+// ════════════════════════════════════════
+//  SECCIÓN JUEGOS PLUS
+// ════════════════════════════════════════
+function cambiarSeccion(sec) {
+  document.getElementById('seccionChat').style.display  = sec==='chat'   ? '' : 'none';
+  document.getElementById('seccionJuegos').style.display= sec==='juegos' ? '' : 'none';
+  document.getElementById('navChat').classList.toggle('active', sec==='chat');
+  document.getElementById('navJuegos').classList.toggle('active', sec==='juegos');
+  if (sec==='juegos') renderJuegos();
+}
+
+function tieneJuegosPlus() {
+  return userDoc?.features?.juegos===true || me?.email==='rgaraventa@gmail.com';
+}
+
+const PERFILES_JUEGO = [
+  {id:'adulto',label:'Adulto',emoji:'👤'},
+  {id:'nino',label:'Niño',emoji:'👦'},
+  {id:'autismo',label:'Autismo / TEA',emoji:'🌈'},
+  {id:'alzheimer',label:'Alzheimer / Vejez',emoji:'🧓'},
+  {id:'deterioro',label:'Deterioro cognitivo',emoji:'🧩'},
+];
+let perfilJuegoActivo='adulto', juegoActivo=null;
+
+function renderJuegos() {
+  const sec = document.getElementById('seccionJuegos');
+  if (!tieneJuegosPlus()) {
+    sec.innerHTML=`<div class="juegos-plus-lock"><div class="juegos-plus-icon">🎮</div><div class="juegos-plus-title">Juegos cognitivos — PLUS</div><div class="juegos-plus-sub">Ejercicios comprobados para estimular la memoria, atención y lenguaje.<br><br>Activá el plan PLUS para acceder a sopa de letras, memoria visual y pares de imágenes, adaptados al perfil cognitivo del usuario.</div></div>`;
+    return;
+  }
+  if (juegoActivo) return;
+  const cuadro = perfilCognitivo?.cuadro||'ninguno';
+  if (cuadro==='tea') perfilJuegoActivo='autismo';
+  else if (cuadro==='alzheimer') perfilJuegoActivo='alzheimer';
+  else if (['discapacidad-intelectual','otro'].includes(cuadro)) perfilJuegoActivo='deterioro';
+  sec.innerHTML=`
+    <div class="juegos-filtro">
+      <div class="filtro-label">Perfil cognitivo</div>
+      <div class="filtro-chips">${PERFILES_JUEGO.map(p=>`<div class="filtro-chip${p.id===perfilJuegoActivo?' active':''}" data-perfil="${p.id}" onclick="selPerfil('${p.id}')">${p.emoji} ${p.label}</div>`).join('')}</div>
+    </div>
+    <div class="juegos-grid" id="juegosGrid">${renderTarjetasJuego()}</div>`;
+}
+
+function selPerfil(id) {
+  perfilJuegoActivo=id;
+  document.querySelectorAll('.filtro-chip').forEach(c=>c.classList.toggle('active',c.dataset.perfil===id));
+  document.getElementById('juegosGrid').innerHTML=renderTarjetasJuego();
+}
+
+function renderTarjetasJuego() {
+  const cfgs={
+    adulto:   {sopa:{desc:'Encontrá las palabras escondidas en la grilla',dif:'8 palabras · 12×12'},memoria:{desc:'Encontrá los pares de imágenes',dif:'16 cartas · 90s'},pares:{desc:'Asociá imagen con su nombre',dif:'8 pares'}},
+    nino:     {sopa:{desc:'Buscá los animales escondidos entre las letras',dif:'5 palabras · 8×8'},memoria:{desc:'Encontrá los animalitos iguales',dif:'12 cartas'},pares:{desc:'Uní cada animal con su nombre',dif:'6 pares · fácil'}},
+    autismo:  {sopa:{desc:'Palabras cortas en grilla pequeña',dif:'4 palabras · 6×6'},memoria:{desc:'Emojis simples y colores contrastantes',dif:'8 cartas'},pares:{desc:'Asociá emojis con sus nombres',dif:'4 pares · fácil'}},
+    alzheimer:{sopa:{desc:'Letras grandes, palabras cotidianas',dif:'4 palabras · 6×6'},memoria:{desc:'Objetos cotidianos conocidos',dif:'8 cartas'},pares:{desc:'Uní el objeto con dónde se usa',dif:'4 pares · fácil'}},
+    deterioro:{sopa:{desc:'Grilla pequeña, palabras simples',dif:'4 palabras · 6×6'},memoria:{desc:'Pocas cartas, colores vivos',dif:'6 cartas'},pares:{desc:'Pares simples con apoyo visual',dif:'3 pares · fácil'}},
+  };
+  const c=cfgs[perfilJuegoActivo]||cfgs.adulto;
+  return `
+    <div class="juego-card" onclick="iniciarJuego('sopa')"><div class="juego-icon">🔤</div><div class="juego-nombre">Sopa de letras</div><div class="juego-desc">${c.sopa.desc}</div><span class="juego-badge">${c.sopa.dif}</span></div>
+    <div class="juego-card" onclick="iniciarJuego('memoria')"><div class="juego-icon">🃏</div><div class="juego-nombre">Memoria visual</div><div class="juego-desc">${c.memoria.desc}</div><span class="juego-badge">${c.memoria.dif}</span></div>
+    <div class="juego-card" style="grid-column:1/-1" onclick="iniciarJuego('pares')"><div class="juego-icon">🖼️</div><div class="juego-nombre">Pares de imágenes</div><div class="juego-desc">${c.pares.desc}</div><span class="juego-badge">${c.pares.dif}</span></div>`;
+}
+
+function palabrasPorPerfil(p) {
+  return {adulto:['MEMORIA','CEREBRO','ATENCION','LENGUAJE','PENSAMIENTO','CALCULO','LOGICA','TIEMPO'],nino:['PERRO','GATO','PATO','LEON','SAPO','NUBE'],autismo:['CASA','MAMA','PAPA','SOL'],alzheimer:['AGUA','MESA','SILLA','RELOJ'],deterioro:['MANO','OJO','PIE','LUZ']}[p]||['MEMORIA','CEREBRO'];
+}
+function emojisPorPerfil(p) {
+  return {adulto:['🧠','❤️','🌟','🎵','🌈','🏠','✈️','📚'],nino:['🐶','🐱','🐸','🦁','🐻','🐼'],autismo:['⭐','❤️','🔵','🟡','🟢','🔴'],alzheimer:['🏠','☀️','🌙','🌸','🍎','🚗'],deterioro:['⭐','❤️','☀️','🌙']}[p]||['🧠','❤️'];
+}
+
+function iniciarJuego(tipo) {
+  juegoActivo=tipo;
+  const sec=document.getElementById('seccionJuegos');
+  const hdr=`<div class="juego-header"><button class="btn-volver" onclick="volverJuegos()">← Volver</button><div class="juego-titulo">${tipo==='sopa'?'🔤 Sopa de letras':tipo==='memoria'?'🃏 Memoria visual':'🖼️ Pares'}</div><div class="juego-score" id="juegoScore">0 pts</div></div>`;
+  if (tipo==='sopa') iniciarSopa(sec,hdr);
+  else if (tipo==='memoria') iniciarMemoria(sec,hdr);
+  else iniciarPares(sec,hdr);
+}
+function volverJuegos() { juegoActivo=null; renderJuegos(); }
+
+// SOPA
+let sopaState={};
+function iniciarSopa(sec,hdr) {
+  const pals=palabrasPorPerfil(perfilJuegoActivo);
+  const n=perfilJuegoActivo==='adulto'?8:perfilJuegoActivo==='nino'?6:4;
+  const tam=perfilJuegoActivo==='adulto'?12:perfilJuegoActivo==='nino'?8:6;
+  const sel=pals.slice(0,n);
+  const grilla=generarSopa(sel,tam);
+  sopaState={grilla,palabras:sel,encontradas:new Set(),selStart:null,selCells:[],tam,posicionesPalabras:{}};
+  sec.innerHTML=hdr+`<div class="sopa-wrap"><div class="sopa-grid" id="sopaGrid" style="grid-template-columns:repeat(${tam},32px)"></div><div class="sopa-palabras" id="sopaPalabras"></div></div>`;
+  renderSopa();
+}
+function generarSopa(palabras,tam) {
+  const grid=Array.from({length:tam},()=>Array(tam).fill(''));
+  const dirs=[[0,1],[1,0],[1,1],[-1,1]];
+  for (const pal of palabras) {
+    let ok=false;
+    for (let t=0;t<100&&!ok;t++) {
+      const [dr,dc]=dirs[Math.floor(Math.random()*dirs.length)];
+      const r=Math.floor(Math.random()*tam),c=Math.floor(Math.random()*tam);
+      let can=true;
+      for (let j=0;j<pal.length;j++) { const nr=r+dr*j,nc=c+dc*j; if(nr<0||nr>=tam||nc<0||nc>=tam||(grid[nr][nc]&&grid[nr][nc]!==pal[j])){can=false;break;} }
+      if (can) { for(let j=0;j<pal.length;j++) grid[r+dr*j][c+dc*j]=pal[j]; ok=true; }
+    }
+  }
+  const abc='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let r=0;r<tam;r++) for(let c=0;c<tam;c++) if(!grid[r][c]) grid[r][c]=abc[Math.floor(Math.random()*26)];
+  return grid;
+}
+function renderSopa() {
+  const el=document.getElementById('sopaGrid'); if(!el) return;
+  el.innerHTML=sopaState.grilla.flatMap((row,r)=>row.map((cell,c)=>{
+    const enc=Object.entries(sopaState.posicionesPalabras||{}).some(([,ps])=>ps.some(([pr,pc])=>pr===r&&pc===c));
+    const sel=sopaState.selCells.some(([sr,sc])=>sr===r&&sc===c);
+    return `<div class="sopa-cell${enc?' encontrado':sel?' sel':''}" data-r="${r}" data-c="${c}">${cell}</div>`;
+  })).join('');
+  document.getElementById('sopaPalabras').innerHTML=sopaState.palabras.map(p=>`<span class="sopa-palabra${sopaState.encontradas.has(p)?' encontrada':''}">${p}</span>`).join('');
+  el.querySelectorAll('.sopa-cell').forEach(cell=>{
+    cell.addEventListener('pointerdown',e=>{e.preventDefault();sopaState.selStart=[+cell.dataset.r,+cell.dataset.c];sopaState.selCells=[[+cell.dataset.r,+cell.dataset.c]];renderSopa();});
+    cell.addEventListener('pointerenter',e=>{
+      if(!e.buttons||!sopaState.selStart) return;
+      const [r0,c0]=sopaState.selStart,r=+cell.dataset.r,c=+cell.dataset.c;
+      const dr=Math.sign(r-r0),dc=Math.sign(c-c0),dist=Math.max(Math.abs(r-r0),Math.abs(c-c0));
+      sopaState.selCells=Array.from({length:dist+1},(_,i)=>[r0+dr*i,c0+dc*i]);
+      renderSopa();
+    });
+    cell.addEventListener('pointerup',()=>{
+      const pal=sopaState.selCells.map(([r,c])=>sopaState.grilla[r][c]).join('');
+      if(sopaState.palabras.includes(pal)&&!sopaState.encontradas.has(pal)){
+        sopaState.encontradas.add(pal);
+        sopaState.posicionesPalabras[pal]=sopaState.selCells;
+        const pts=sopaState.encontradas.size*10;
+        document.getElementById('juegoScore').textContent=pts+' pts';
+        if(sopaState.encontradas.size===sopaState.palabras.length) setTimeout(()=>mostrarResultadoJuego('¡Completaste la sopa!','🎉',`Encontraste las ${sopaState.palabras.length} palabras`,pts),400);
+      }
+      sopaState.selStart=null; sopaState.selCells=[]; renderSopa();
+    });
+  });
+}
+
+// MEMORIA
+let memoriaState={};
+function iniciarMemoria(sec,hdr) {
+  const emojis=emojisPorPerfil(perfilJuegoActivo);
+  const n=perfilJuegoActivo==='adulto'?8:['autismo','alzheimer'].includes(perfilJuegoActivo)?4:perfilJuegoActivo==='deterioro'?3:6;
+  const pares=emojis.slice(0,n);
+  const cartas=[...pares,...pares].sort(()=>Math.random()-.5).map((e,i)=>({id:i,emoji:e,flipped:false,matched:false}));
+  const cols=n<=4?2:n<=6?3:4;
+  memoriaState={cartas,flippedIds:[],matched:0,total:n,bloqueado:false,pts:0};
+  sec.innerHTML=hdr+`<div class="memoria-grid" id="memoriaGrid" style="grid-template-columns:repeat(${cols},1fr);max-width:${cols*80}px;margin:0 auto"></div>`;
+  renderMemoria();
+}
+function renderMemoria() {
+  const el=document.getElementById('memoriaGrid'); if(!el) return;
+  el.innerHTML=memoriaState.cartas.map(c=>`<div class="memoria-card${c.flipped||c.matched?' flipped':''}${c.matched?' matched':''}" onclick="flipCarta(${c.id})"><div class="memoria-inner"><div class="memoria-front">🎴</div><div class="memoria-back">${c.emoji}</div></div></div>`).join('');
+}
+function flipCarta(id) {
+  if(memoriaState.bloqueado) return;
+  const c=memoriaState.cartas[id]; if(c.flipped||c.matched) return;
+  c.flipped=true; memoriaState.flippedIds.push(id); renderMemoria();
+  if(memoriaState.flippedIds.length===2) {
+    memoriaState.bloqueado=true;
+    const [a,b]=memoriaState.flippedIds;
+    setTimeout(()=>{
+      if(memoriaState.cartas[a].emoji===memoriaState.cartas[b].emoji){
+        memoriaState.cartas[a].matched=memoriaState.cartas[b].matched=true;
+        memoriaState.matched++; memoriaState.pts+=15;
+        document.getElementById('juegoScore').textContent=memoriaState.pts+' pts';
+        if(memoriaState.matched===memoriaState.total) setTimeout(()=>mostrarResultadoJuego('¡Memoria perfecta!','🧠',`Encontraste los ${memoriaState.total} pares`,memoriaState.pts),300);
+      } else { memoriaState.cartas[a].flipped=memoriaState.cartas[b].flipped=false; }
+      memoriaState.flippedIds=[]; memoriaState.bloqueado=false; renderMemoria();
+    },900);
+  }
+}
+
+// PARES
+let paresState={};
+function iniciarPares(sec,hdr) {
+  const bancos={
+    adulto:   [{img:'🧠',txt:'Cerebro'},{img:'❤️',txt:'Corazón'},{img:'🌟',txt:'Estrella'},{img:'🏠',txt:'Casa'},{img:'🌺',txt:'Flor'},{img:'✈️',txt:'Avión'},{img:'📚',txt:'Libro'},{img:'🎵',txt:'Música'}],
+    nino:     [{img:'🐶',txt:'Perro'},{img:'🐱',txt:'Gato'},{img:'🐸',txt:'Sapo'},{img:'🦁',txt:'León'},{img:'🌈',txt:'Arcoíris'},{img:'🍎',txt:'Manzana'}],
+    autismo:  [{img:'⭐',txt:'Estrella'},{img:'❤️',txt:'Corazón'},{img:'☀️',txt:'Sol'},{img:'🌙',txt:'Luna'}],
+    alzheimer:[{img:'🏠',txt:'Casa'},{img:'☀️',txt:'Sol'},{img:'🍎',txt:'Manzana'},{img:'📞',txt:'Teléfono'}],
+    deterioro:[{img:'⭐',txt:'Estrella'},{img:'❤️',txt:'Corazón'},{img:'☀️',txt:'Sol'}],
+  };
+  const banco=(bancos[perfilJuegoActivo]||bancos.adulto).sort(()=>Math.random()-.5);
+  const der=[...banco].sort(()=>Math.random()-.5);
+  paresState={izq:banco,der,selIzq:null,matched:new Set(),pts:0,total:banco.length};
+  sec.innerHTML=hdr+`<p style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:12px">Tocá un emoji y luego su nombre para unir el par</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:340px;margin:0 auto" id="paresGrid"></div>`;
+  renderPares();
+}
+function renderPares() {
+  const el=document.getElementById('paresGrid'); if(!el) return;
+  const {izq,der,selIzq,matched}=paresState;
+  const n=Math.max(izq.length,der.length);
+  let html='';
+  for(let i=0;i<n;i++){
+    const li=izq[i],ld=der[i];
+    html+=li?`<div class="par-card${selIzq===i?' sel':''}${matched.has(li.txt)?' matched':''}" onclick="selParIzq(${i})"><div class="par-emoji">${li.img}</div></div>`:'<div></div>';
+    html+=ld?`<div class="par-card${matched.has(ld.txt)?' matched':''}" onclick="selParDer(${i})"><div style="font-size:1rem;font-weight:700;color:var(--text)">${ld.txt}</div></div>`:'<div></div>';
+  }
+  el.innerHTML=html;
+}
+function selParIzq(i){if(paresState.matched.has(paresState.izq[i].txt))return;paresState.selIzq=i;renderPares();}
+function selParDer(i){
+  if(paresState.selIzq===null)return;
+  const li=paresState.izq[paresState.selIzq],ld=paresState.der[i];
+  if(li.txt===ld.txt){
+    paresState.matched.add(li.txt);paresState.pts+=20;
+    document.getElementById('juegoScore').textContent=paresState.pts+' pts';
+    if(paresState.matched.size===paresState.total) setTimeout(()=>mostrarResultadoJuego('¡Todos los pares!','🎊',`Uniste los ${paresState.total} pares`,paresState.pts),300);
+  }
+  paresState.selIzq=null;renderPares();
+}
+
+function mostrarResultadoJuego(titulo,emoji,sub,pts) {
+  const wrap=document.createElement('div');
+  wrap.className='juego-resultado';
+  wrap.innerHTML=`<div class="resultado-emoji">${emoji}</div><div class="resultado-msg">${titulo}</div><div class="resultado-sub">${sub} · ${pts} puntos</div><button class="btn-jugar-de-nuevo" onclick="volverJuegos()">Jugar de nuevo</button>`;
+  document.getElementById('seccionJuegos').appendChild(wrap);
+  try{if(me&&db){const hoy=new Date().toISOString().split('T')[0];db.collection('usuarios').doc(me.uid).collection('sesiones').doc(hoy).set({juegos:firebase.firestore.FieldValue.arrayUnion({tipo:juegoActivo,perfil:perfilJuegoActivo,pts,ts:new Date().toISOString()})},{merge:true});}}catch(e){}
+}
 </script>
 </body>
 </html>
