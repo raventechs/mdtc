@@ -699,9 +699,12 @@ function toggleChip(btn, grupo) {
 window.toggleChip = toggleChip;
 
 function abrirPerfil() {
+  try {
+    if (!perfilConfig) perfilConfig = {};
+    cargarPerfilEnUI();
+  } catch(e) { console.warn('cargarPerfilEnUI error:', e); }
   document.getElementById('perfilOverlay').classList.add('on');
   document.getElementById('perfilDrawer').classList.add('on');
-  cargarPerfilEnUI(); // cargar datos si existen (no bloquea si no hay)
 }
 window.abrirPerfil = abrirPerfil;
 
@@ -1258,7 +1261,7 @@ function pinBorrar() { pinActual = pinActual.slice(0,-1); actualizarDots(); docu
 window.pinBorrar = pinBorrar;
 function actualizarDots() { for (let i=1;i<=4;i++) document.getElementById('pd'+i).classList.toggle('filled', i<=pinActual.length); }
 function validarPin() {
-  const pin = perfilConfig.pinCuidador || PIN_DEFAULT;
+  const pin = (perfilConfig && perfilConfig.pinCuidador) ? perfilConfig.pinCuidador : PIN_DEFAULT;
   if (pinActual === pin) { cerrarPin(); if (pinTarget) pinTarget(); }
   else { document.getElementById('pinError').textContent = 'PIN incorrecto.'; pinActual = ''; actualizarDots(); }
 }
@@ -1342,7 +1345,13 @@ document.getElementById('logoTap').addEventListener('click', () => {
   logoTaps++;
   clearTimeout(logoTimer);
   logoTimer = setTimeout(()=>{ logoTaps=0; }, 2000);
-  if (logoTaps >= 5) { logoTaps=0; abrirPin(() => { mostrarToast('🔧 Panel cuidador'); setTimeout(abrirPerfil, 300); }); }
+  if (logoTaps >= 5) { logoTaps=0; abrirPin(() => {
+    try { abrirPerfil(); } catch(e) {
+      // Si falla, abrir el overlay directamente
+      document.getElementById('perfilOverlay').classList.add('on');
+      document.getElementById('perfilDrawer').classList.add('on');
+    }
+  }); }
 });
 
 // ════════════════════════════════════════
