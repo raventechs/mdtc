@@ -936,7 +936,7 @@ async function llamarAPI(userMsg) {
   mostrarTyping();
 
   try {
-    const res = await fetch('https://mdtc.rgaraventa.workers.dev', {
+    const res = await fetch('https://holy-wildflower-25a6.rgaraventa.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1634,7 +1634,7 @@ window.consultarEstudio = async function() {
   const prompt = ESTUDIO_PROMPTS[estudioModoActivo](tema, nivel);
 
   try {
-    const res = await fetch('https://mdtc.rgaraventa.workers.dev', {
+    const res = await fetch('https://holy-wildflower-25a6.rgaraventa.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
