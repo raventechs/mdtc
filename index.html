@@ -567,6 +567,7 @@ const db   = firebase.firestore();
 const ANTHROPIC_KEY = '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';
 const UNSPLASH_KEY  = '31CEhOmCOelZ9RbMCG0l14Av3FCMUW6MFDym_99fZf8';
 const PIN_DEFAULT   = '1234';
+const PIN_ADMIN     = '2580';
 const HOY           = new Date().toISOString().slice(0,10);
 
 // ════════════════════════════════════════
@@ -1346,13 +1347,7 @@ document.getElementById('logoTap').addEventListener('click', () => {
   logoTaps++;
   clearTimeout(logoTimer);
   logoTimer = setTimeout(()=>{ logoTaps=0; }, 4000);
-  if (logoTaps >= 5) { logoTaps=0; abrirPin(() => {
-    try { abrirPerfil(); } catch(e) {
-      // Si falla, abrir el overlay directamente
-      document.getElementById('perfilOverlay').classList.add('on');
-      document.getElementById('perfilDrawer').classList.add('on');
-    }
-  }); }
+  if (logoTaps >= 5) { logoTaps=0; abrirPinAdmin(); }
 });
 
 // ════════════════════════════════════════
@@ -2286,6 +2281,82 @@ window.desactivarModoAdultoMayor = function() {
 
 })(); // fin IIFE
 
+
+
+// ════ PANEL ADMIN RAVENTECHS ════
+function abrirPinAdmin() {
+  // Usar modal PIN pero validar contra PIN_ADMIN
+  pinActual = '';
+  pinTarget = null;
+  document.getElementById('pinError').textContent = '';
+  actualizarDots();
+  // Cambiar temporalmente el validador
+  window._adminMode = true;
+  document.getElementById('pinModal').classList.add('on');
+}
+
+// Override temporal de validarPin para modo admin
+const _validarPinOriginal = window.validarPin;
+function validarPin() {
+  if (window._adminMode) {
+    if (pinActual === PIN_ADMIN) {
+      window._adminMode = false;
+      cerrarPin();
+      abrirAdmin();
+    } else {
+      document.getElementById('pinError').textContent = 'PIN incorrecto.';
+      pinActual = ''; actualizarDots();
+    }
+  } else {
+    const pin = (perfilConfig && perfilConfig.pinCuidador) ? perfilConfig.pinCuidador : PIN_DEFAULT;
+    if (pinActual === pin) { cerrarPin(); if (pinTarget) pinTarget(); }
+    else { document.getElementById('pinError').textContent = 'PIN incorrecto.'; pinActual = ''; actualizarDots(); }
+  }
+}
+window.validarPin = validarPin;
+
+function abrirAdmin() {
+  // Cargar estado actual
+  const modo = perfilConfig?.modo || 'cognitivo';
+  document.getElementById('adminModo').value = modo;
+  document.getElementById('adminPinCuid').value = perfilConfig?.pinCuidador || '1234';
+  document.getElementById('plusEstudio').checked = perfilConfig?.plus?.estudio || false;
+  document.getElementById('plusAdultoMayor').checked = perfilConfig?.plus?.adultoMayor || false;
+  document.getElementById('adminOverlay').classList.add('on');
+  document.getElementById('adminDrawer').classList.add('on');
+}
+window.abrirAdmin = abrirAdmin;
+
+function cerrarAdmin() {
+  document.getElementById('adminOverlay').classList.remove('on');
+  document.getElementById('adminDrawer').classList.remove('on');
+}
+window.cerrarAdmin = cerrarAdmin;
+
+async function guardarAdmin() {
+  const modo     = document.getElementById('adminModo').value;
+  const pinCuid  = document.getElementById('adminPinCuid').value || '1234';
+  const plusEst  = document.getElementById('plusEstudio').checked;
+  const plusAM   = document.getElementById('plusAdultoMayor').checked;
+
+  perfilConfig = perfilConfig || {};
+  perfilConfig.modo          = modo;
+  perfilConfig.pinCuidador   = pinCuid;
+  perfilConfig.plus          = { estudio: plusEst, adultoMayor: plusAM };
+
+  // Guardar en Firestore
+  try {
+    if (me?.uid) {
+      await db.collection('usuarios').doc(me.uid).set({ perfilConfig }, { merge: true });
+      mostrarToast('✅ Cambios guardados');
+    }
+  } catch(e) { mostrarToast('Error: ' + e.message); }
+
+  cerrarAdmin();
+  aplicarModo(modo);
+}
+window.guardarAdmin = guardarAdmin;
+
 </script>
 
 <!-- ════ MODO ESTUDIO ════ -->
@@ -2316,6 +2387,43 @@ window.desactivarModoAdultoMayor = function() {
       </button>
     </div>
     <button onclick="consultarEstudio()" style="width:100%;margin-top:10px;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border:none;border-radius:12px;padding:13px;font-size:0.9rem;font-weight:700;cursor:pointer" id="btnEstudio">Consultar</button>
+  </div>
+</div>
+
+
+<!-- ════ PANEL ADMIN RAVENTECHS ════ -->
+<div class="perfil-overlay" id="adminOverlay" onclick="cerrarAdmin()"></div>
+<div class="perfil-drawer" id="adminDrawer" style="max-height:85vh;overflow-y:auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-family:var(--font-display,Sora),sans-serif;font-size:1rem;font-weight:700;color:var(--accent)">🦅 RavenTechs Admin</div>
+    <button onclick="cerrarAdmin()" style="background:transparent;border:none;color:var(--text3);font-size:1.2rem;cursor:pointer">✕</button>
+  </div>
+
+  <label class="field-label">Modo de la aplicación</label>
+  <select id="adminModo" class="field-select" style="margin-bottom:14px">
+    <option value="cognitivo">🧠 Modo Cognitivo</option>
+    <option value="estudio">📚 Modo Estudio</option>
+    <option value="adulto-mayor">👴 Modo Adulto Mayor</option>
+  </select>
+
+  <label class="field-label">PIN del cuidador</label>
+  <input type="number" id="adminPinCuid" class="field-select" placeholder="1234" maxlength="4" style="margin-bottom:14px">
+
+  <label class="field-label">Features Plus</label>
+  <div style="background:var(--surface2,#1e293b);border-radius:10px;padding:12px;margin-bottom:14px">
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer">
+      <input type="checkbox" id="plusEstudio"> <span style="font-size:0.85rem">📚 Modo Estudio habilitado</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" id="plusAdultoMayor"> <span style="font-size:0.85rem">👴 Modo Adulto Mayor habilitado</span>
+    </label>
+  </div>
+
+  <button onclick="guardarAdmin()" class="btn-guardar" style="width:100%;margin-bottom:8px">💾 Guardar cambios</button>
+  <button onclick="cerrarAdmin()" class="btn-cancelar" style="width:100%">Cerrar</button>
+
+  <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:0.7rem;color:var(--text3);text-align:center">
+    MTC v1.5 · Firebase: mdtc-487d4
   </div>
 </div>
 
