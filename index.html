@@ -1385,6 +1385,12 @@ const PERFILES_JUEGO = [
 let perfilJuegoActivo='adulto', juegoActivo=null;
 
 function renderJuegos() {
+  // Si está en modo adulto mayor, redirigir al módulo de ejercicios cognitivos
+  const modoActual = (perfilConfig && perfilConfig.modo) || 'cognitivo';
+  if (modoActual === 'adulto-mayor') {
+    if (window.activarModoAdultoMayor) window.activarModoAdultoMayor();
+    return;
+  }
   const sec = document.getElementById('seccionJuegos');
   if (!tieneJuegosPlus()) {
     sec.innerHTML=`<div class="juegos-plus-lock"><div class="juegos-plus-icon">🎮</div><div class="juegos-plus-title">Juegos cognitivos — PLUS</div><div class="juegos-plus-sub">Ejercicios comprobados para estimular la memoria, atención y lenguaje.<br><br>Activá el plan PLUS para acceder a sopa de letras, memoria visual y pares de imágenes, adaptados al perfil cognitivo del usuario.</div></div>`;
