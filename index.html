@@ -2371,6 +2371,42 @@ async function guardarAdmin() {
 }
 window.guardarAdmin = guardarAdmin;
 
+
+// ── P3: Service Worker ──────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw-mtc.js')
+    .then(() => console.log('SW MTC registrado'))
+    .catch(e => console.warn('SW error:', e));
+}
+
+// ── P5: logError ────────────────────────────────────
+function logError(origen, mensaje, extra = {}) {
+  try {
+    if (me) db.collection('errores').add({
+      origen, mensaje,
+      extra: JSON.stringify(extra),
+      app: 'mtc',
+      ts: firebase.firestore ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+    });
+  } catch(e) { console.error('logError:', e); }
+}
+
+// ── P2: Exportar CSV ────────────────────────────────
+function exportarCSV() {
+  try {
+    const rows = [['Fecha','Mensajes','Comprensión','Vocabulario','Motivación','Temas']];
+    diarioSesiones.forEach(s => {
+      rows.push([s.fecha||'', s.mensajes||0, s.comprension||0, s.vocabulario||0, s.motivacion||0, (s.temas||[]).join(' | ')]);
+    });
+    const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'mtc-sesiones-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    mostrarToast('CSV exportado');
+  } catch(e) { logError('exportarCSV', e.message); }
+}
+
 </script>
 
 <!-- ════ MODO ESTUDIO ════ -->
