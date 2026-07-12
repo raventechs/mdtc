@@ -1141,8 +1141,7 @@ const STOPWORDS_EXT = new Set([
 
 function extraerKeywordVisual(texto) {
   const palabras = texto.toLowerCase()
-    .replace(/[¿?¡!.,;:()
-"]/g, ' ')
+    .replace(/[¿?¡!.,;:()"]/g, ' ')
     .split(/\s+/)
     .filter(p => p.length > 4 && !STOPWORDS_EXT.has(p) && !PALABRAS_ABSTRACTAS.has(p));
   // Preferir sustantivos concretos (heurística: sin terminaciones abstractas)
