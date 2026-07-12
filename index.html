@@ -2407,11 +2407,32 @@ function exportarCSV() {
   } catch(e) { logError('exportarCSV', e.message); }
 }
 
+
+// ── Interceptar botón atrás del browser ──────────────
+function pushHistoryState() {
+  history.pushState({ mtc: true }, '', window.location.href);
+}
+
+window.addEventListener('popstate', (e) => {
+  const modo = (perfilConfig && perfilConfig.modo) || 'cognitivo';
+  const estudioActivo = document.getElementById('screenEstudio')?.classList.contains('active');
+  const adultoActivo  = document.getElementById('screenAdultoMayor')?.classList.contains('active');
+  if (estudioActivo || adultoActivo || modo !== 'cognitivo') {
+    // Volver a modo cognitivo en vez de navegar fuera
+    aplicarModo('cognitivo');
+    pushHistoryState(); // volver a agregar estado para el próximo back
+  }
+});
+
+// Agregar estado inicial al cargar
+pushHistoryState();
+
 </script>
 
 <!-- ════ MODO ESTUDIO ════ -->
 <div id="screenEstudio">
   <div class="estudio-header">
+    <button onclick="aplicarModo('cognitivo')" style="background:transparent;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px 8px;margin-right:8px">←</button>
     <div class="estudio-logo">📚 estudiAR</div>
     <span style="font-size:0.72rem;color:var(--muted);margin-left:auto" id="estudioUsuarioNombre"></span>
   </div>
