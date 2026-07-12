@@ -716,8 +716,8 @@ function cargarPerfilEnUI() {
   if (p.edad)        document.getElementById('pEdad').value = p.edad;
   if (p.nivelEscolar) document.getElementById('pNivelEscolar').value = p.nivelEscolar;
   if (p.observaciones) document.getElementById('pObservaciones').value = p.observaciones;
-  if (pf.ci && document.getElementById('pCI')) document.getElementById('pCI').value = pf.ci;
-  if (pf.modo && document.getElementById('switchModo')) document.getElementById('switchModo').value = pf.modo;
+  if (p.ci && document.getElementById('pCI')) document.getElementById('pCI').value = p.ci;
+  if (p.modo && document.getElementById('switchModo')) document.getElementById('switchModo').value = p.modo;
   ['cuadro','objetivos','intereses-m'].forEach(grupo => {
     const key = grupo === 'intereses-m' ? 'interesesManuales' : grupo;
     const vals = p[key] || [];
