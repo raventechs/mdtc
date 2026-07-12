@@ -1906,6 +1906,7 @@ document.head.appendChild(style);
 const html = `
 <div id="screenAdultoMayor">
   <div class="am-header">
+    <button onclick="window.desactivarModoAdultoMayor&&window.desactivarModoAdultoMayor()" style="background:transparent;border:none;color:#6b7280;font-size:1.1rem;cursor:pointer;padding:4px 8px;margin-right:8px">←</button>
     <div class="am-logo">👴 Ejercicios cognitivos</div>
     <div class="am-ronda" id="amRonda">Sesión 1</div>
   </div>
@@ -2287,6 +2288,9 @@ window.activarModoAdultoMayor = function() {
 
 window.desactivarModoAdultoMayor = function() {
   document.getElementById('screenAdultoMayor').classList.remove('active');
+  // Volver al modo cognitivo visualmente sin cambiar el perfil
+  const mainChat = document.getElementById('screenApp');
+  if (mainChat) mainChat.style.display = '';
 };
 
   window.renderMenu = renderMenu;
