@@ -699,9 +699,9 @@ function toggleChip(btn, grupo) {
 window.toggleChip = toggleChip;
 
 function abrirPerfil() {
-  cargarPerfilEnUI();
   document.getElementById('perfilOverlay').classList.add('on');
   document.getElementById('perfilDrawer').classList.add('on');
+  cargarPerfilEnUI(); // cargar datos si existen (no bloquea si no hay)
 }
 window.abrirPerfil = abrirPerfil;
 
@@ -712,8 +712,7 @@ function cerrarPerfil() {
 window.cerrarPerfil = cerrarPerfil;
 
 function cargarPerfilEnUI() {
-  const p = perfilConfig;
-  if (!p || Object.keys(p).length === 0) return;
+  const p = perfilConfig || {};
   if (p.nombre)      document.getElementById('pNombre').value = p.nombre;
   if (p.edad)        document.getElementById('pEdad').value = p.edad;
   if (p.nivelEscolar) document.getElementById('pNivelEscolar').value = p.nivelEscolar;
