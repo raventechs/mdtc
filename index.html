@@ -423,6 +423,11 @@ textarea::placeholder{color:var(--muted)}
     <option value="universitario">Universitario / terciario</option>
     <option value="adulto-mayor">Adulto mayor (no aplica)</option>
   </select>
+  <label class="field-label">CI / Coeficiente Intelectual <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <input type="number" id="pCI" min="40" max="160" placeholder="Ej: 85" class="field-select" style="max-width:120px">
+    <span style="font-size:0.73rem;color:var(--muted);line-height:1.4">Normal: 90–110<br>Límite: 70–89 · Bajo: &lt;70</span>
+  </div>
   <label class="field-label">Objetivos</label>
   <div class="chips-wrap" id="chipsObjetivos">
     <button class="opt-chip" data-val="mejorar-lectura" onclick="toggleChip(this,'objetivos')">📖 Mejorar lectura</button>
@@ -677,6 +682,7 @@ function cargarPerfilEnUI() {
   if (p.edad)        document.getElementById('pEdad').value = p.edad;
   if (p.nivelEscolar) document.getElementById('pNivelEscolar').value = p.nivelEscolar;
   if (p.observaciones) document.getElementById('pObservaciones').value = p.observaciones;
+  if (pf.ci && document.getElementById('pCI')) document.getElementById('pCI').value = pf.ci;
   ['cuadro','objetivos','intereses-m'].forEach(grupo => {
     const key = grupo === 'intereses-m' ? 'interesesManuales' : grupo;
     const vals = p[key] || [];
@@ -693,6 +699,7 @@ function guardarPerfil() {
     nombre:            document.getElementById('pNombre').value.trim(),
     edad:              document.getElementById('pEdad').value,
     cuadro:            selecciones['cuadro'].slice(),
+        ci:                parseInt(document.getElementById('pCI')?.value) || null,
     nivelEscolar:      document.getElementById('pNivelEscolar').value,
     objetivos:         selecciones['objetivos'].slice(),
     interesesManuales: selecciones['intereses-m'].slice(),
@@ -739,6 +746,7 @@ function construirSystemPrompt() {
     if (pf.nombre)             extra += `\n- Nombre: ${pf.nombre}`;
     if (pf.edad)               extra += `\n- Edad: ${pf.edad} años`;
     if (pf.cuadro?.length)     extra += `\n- Condición: ${pf.cuadro.join(', ')}`;
+    if (pf.ci)                 extra += `\n- CI: ${pf.ci} (${pf.ci >= 110 ? 'alto' : pf.ci >= 90 ? 'normal' : pf.ci >= 70 ? 'límite' : 'bajo'})`;
     if (pf.nivelEscolar)       extra += `\n- Nivel escolar: ${pf.nivelEscolar}`;
     if (pf.objetivos?.length)  extra += `\n- Objetivos: ${pf.objetivos.join(', ')}`;
     if (pf.interesesManuales?.length) extra += `\n- Intereses: ${pf.interesesManuales.join(', ')}`;
@@ -1346,7 +1354,7 @@ function renderJuegos() {
   const cuadro = perfilCognitivo?.cuadro||'ninguno';
   if (cuadro==='tea') perfilJuegoActivo='autismo';
   else if (cuadro==='alzheimer') perfilJuegoActivo='alzheimer';
-  else if (['discapacidad-intelectual','otro'].includes(cuadro)) perfilJuegoActivo='deterioro';
+  else if (['discapacidad-intelectual','retraso-madurativo','otro'].includes(cuadro)) perfilJuegoActivo='deterioro';
   sec.innerHTML=`
     <div class="juegos-filtro">
       <div class="filtro-label">Perfil cognitivo</div>
