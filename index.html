@@ -647,6 +647,10 @@ async function cargarDatosFirestore() {
       if (local) { try { perfilConfig = JSON.parse(local); } catch(e){} }
     }
     aplicarPerfilEnUI();
+    // Aplicar el modo guardado (cognitivo/estudio/adulto-mayor)
+    if (perfilConfig && perfilConfig.modo && perfilConfig.modo !== 'cognitivo') {
+      setTimeout(() => aplicarModo(perfilConfig.modo), 500);
+    }
 
     // Cargar diario
     const sesionesDocs = await db.collection('usuarios').doc(me)
