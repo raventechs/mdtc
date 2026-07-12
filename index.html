@@ -160,7 +160,7 @@ textarea::placeholder{color:var(--muted)}
 .pin-cancel{margin-top:12px;background:transparent;border:none;color:var(--muted);font-size:0.78rem}
 
 /* ── BTN FLOTANTE AVANCES ── */
-.btn-flotante{position:fixed;bottom:105px;right:18px;width:44px;height:44px;border-radius:13px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:19px;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:10}
+.btn-flotante{position:fixed;bottom:160px;right:18px;width:44px;height:44px;border-radius:13px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:19px;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:10}
 .btn-flotante:hover{border-color:var(--warm);color:var(--warm)}
 
 /* ── TOAST ── */
@@ -318,7 +318,7 @@ textarea::placeholder{color:var(--muted)}
       </div>
     </div>
     <div class="header-right">
-      <button class="btn-config" id="btnConfig" onclick="abrirPerfil()">⚙️ Perfil</button>
+      <button class="btn-config" id="btnConfig" onclick="abrirPerfil()" title="Perfil">⚙️</button>
       <div class="nivel-badge">Nivel <b id="nivelLabel">—</b></div>
       <img class="user-avatar" id="userAvatar" src="" alt="user" onclick="cerrarSesion()" title="Cerrar sesión" style="display:none">
     </div>
@@ -409,7 +409,6 @@ textarea::placeholder{color:var(--muted)}
 </div>
 
 <!-- BTN AVANCES -->
-<button onclick="abrirPin(abrirPerfil)" style="position:fixed;bottom:80px;right:70px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#6b7280;font-size:1rem;cursor:pointer;z-index:99" title="Configuración cuidador">⚙️</button>
 <button class="btn-flotante" id="btnAvances" onclick="abrirAvances()" title="Ver avances" style="display:none">📊</button>
 
 <!-- TOAST -->
@@ -2429,4 +2428,3 @@ window.guardarAdmin = guardarAdmin;
 
 </body>
 </html>
-
