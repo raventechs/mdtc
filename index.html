@@ -486,6 +486,7 @@ textarea::placeholder{color:var(--muted)}
   <select id="switchModo" class="field-select" style="margin-bottom:14px">
     <option value="cognitivo">🧠 Modo Cognitivo — Aprendizaje adaptado</option>
     <option value="estudio">📚 Modo Estudio — Curiosidad / SOS Examen / Completo</option>
+    <option value="adulto-mayor">👴 Modo Adulto Mayor — Ejercicios cognitivos</option>
   </select>
   <label class="field-label">Observaciones del cuidador</label>
   <textarea class="field-input" id="pObservaciones" rows="2" placeholder="Ej: le cuesta mantener la atención más de 5 minutos..."></textarea>
@@ -1743,18 +1744,538 @@ async function cargarHistorialEstudio() {
 
 // Activar Modo Estudio cuando el perfil lo indica
 function aplicarModo(modo) {
-  const mainChat = document.querySelector('.chat-container, #chatContainer, .app-wrap');
-  const screenEstudio = document.getElementById('screenEstudio');
+  const mainChat    = document.querySelector('.chat-container, #chatContainer, .app-wrap');
+  const screenEstudio    = document.getElementById('screenEstudio');
+  const screenAdulto = document.getElementById('screenAdultoMayor');
+
+  // Ocultar todo primero
+  if (mainChat)    mainChat.style.display    = 'none';
+  screenEstudio?.classList.remove('active');
+  screenAdulto?.classList.remove('active');
+
   if (modo === 'estudio') {
-    if (mainChat) mainChat.style.display = 'none';
     screenEstudio?.classList.add('active');
     document.getElementById('estudioUsuarioNombre').textContent = perfilConfig.nombre || '';
     cargarHistorialEstudio();
+  } else if (modo === 'adulto-mayor') {
+    window.activarModoAdultoMayor?.();
   } else {
+    // Modo cognitivo (default)
     if (mainChat) mainChat.style.display = '';
-    screenEstudio?.classList.remove('active');
   }
 }
+
+
+
+// ── MÓDULO ADULTO MAYOR (independiente) ──
+// ════════════════════════════════════════════════════════════
+//  MTC — MÓDULO ADULTO MAYOR v1.0
+//  Ejercicios cognitivos para Alzheimer, pre-Alzheimer,
+//  demencia senil, retraso cognitivo en adultos.
+//  MÓDULO INDEPENDIENTE — no toca el resto del código.
+// ════════════════════════════════════════════════════════════
+
+(function() {
+
+// ── ESTADO DEL MÓDULO ──
+const AM = {
+  ejercicioActual: null,
+  ronda:           1,
+  aciertos:        0,
+  errores:         0,
+  secuencia:       [],
+  inputSecuencia:  [],
+  memItems:        [],
+  memOcultos:      false,
+};
+
+// ── EJERCICIOS DISPONIBLES ──
+const EJERCICIOS = [
+  { id: 'memoria',     label: '🧠 Memoria visual',      desc: 'Recordá los objetos que vas a ver' },
+  { id: 'secuencia',   label: '🔢 Secuencia de números', desc: 'Repetí la secuencia que aparece' },
+  { id: 'orientacion', label: '📅 Orientación temporal', desc: 'Respondé preguntas sobre el día de hoy' },
+  { id: 'evocacion',   label: '💬 Evocación guiada',     desc: 'Nombrá elementos de una categoría' },
+  { id: 'colores',     label: '🎨 Secuencia de colores', desc: 'Repetí la secuencia de colores' },
+  { id: 'sopa',        label: '🔤 Palabras del hogar',   desc: 'Encontrá las palabras escondidas' },
+];
+
+const OBJETOS_COTIDIANOS = [
+  { emoji: '🏠', nombre: 'Casa' }, { emoji: '🌳', nombre: 'Árbol' },
+  { emoji: '☀️', nombre: 'Sol' },  { emoji: '🌙', nombre: 'Luna' },
+  { emoji: '📞', nombre: 'Teléfono' }, { emoji: '🍎', nombre: 'Manzana' },
+  { emoji: '🐶', nombre: 'Perro' }, { emoji: '🌸', nombre: 'Flor' },
+  { emoji: '🚗', nombre: 'Auto' }, { emoji: '📚', nombre: 'Libro' },
+  { emoji: '🍞', nombre: 'Pan' }, { emoji: '🪑', nombre: 'Silla' },
+  { emoji: '🎵', nombre: 'Música' }, { emoji: '⛪', nombre: 'Iglesia' },
+  { emoji: '🌊', nombre: 'Mar' }, { emoji: '🍵', nombre: 'Mate' },
+];
+
+const COLORES = [
+  { color: '#e74c3c', nombre: 'Rojo' },
+  { color: '#3498db', nombre: 'Azul' },
+  { color: '#2ecc71', nombre: 'Verde' },
+  { color: '#f1c40f', nombre: 'Amarillo' },
+  { color: '#9b59b6', nombre: 'Violeta' },
+  { color: '#e67e22', nombre: 'Naranja' },
+];
+
+const PALABRAS_HOGAR = ['MESA', 'SILLA', 'PUERTA', 'CAMA', 'PLATO', 'VASO', 'ROPA', 'LLAVE'];
+
+const CATEGORIAS_EVOCACION = [
+  { cat: 'animales domésticos', ejemplos: 'perro, gato, loro...' },
+  { cat: 'frutas', ejemplos: 'manzana, naranja, pera...' },
+  { cat: 'colores', ejemplos: 'rojo, azul, verde...' },
+  { cat: 'flores', ejemplos: 'rosa, margarita, clavel...' },
+  { cat: 'medios de transporte', ejemplos: 'auto, colectivo, tren...' },
+  { cat: 'comidas argentinas', ejemplos: 'asado, empanada, mate...' },
+];
+
+// ── CSS DEL MÓDULO ──
+const CSS = `
+#screenAdultoMayor{display:none;flex-direction:column;height:100vh;background:#0a0e1a;font-family:Inter,sans-serif}
+#screenAdultoMayor.active{display:flex}
+.am-header{padding:16px;background:#111827;border-bottom:1px solid #1f2937;display:flex;align-items:center;justify-content:space-between}
+.am-logo{font-size:1rem;font-weight:700;color:#6ee7b7}
+.am-ronda{font-size:0.75rem;color:#6b7280;background:#1f2937;padding:4px 10px;border-radius:999px}
+.am-body{flex:1;overflow-y:auto;padding:20px 16px}
+.am-score{display:flex;gap:12px;margin-bottom:20px}
+.am-score-pill{flex:1;background:#111827;border:1px solid #1f2937;border-radius:10px;padding:10px;text-align:center}
+.am-score-n{font-size:1.4rem;font-weight:700}
+.am-score-n.ok{color:#22c55e}
+.am-score-n.err{color:#ef4444}
+.am-score-label{font-size:0.65rem;color:#6b7280;margin-top:2px}
+.am-ejercicio-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.am-ej-card{background:#111827;border:1.5px solid #1f2937;border-radius:14px;padding:16px;cursor:pointer;transition:all .15s;text-align:center}
+.am-ej-card:hover{border-color:#6ee7b7}
+.am-ej-icon{font-size:1.8rem;margin-bottom:6px}
+.am-ej-label{font-size:0.78rem;font-weight:700;color:#e2e8f0}
+.am-ej-desc{font-size:0.65rem;color:#6b7280;margin-top:3px;line-height:1.4}
+.am-panel{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:20px;margin-bottom:16px}
+.am-panel-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px}
+.am-panel-sub{font-size:0.78rem;color:#6b7280;margin-bottom:16px}
+.am-items-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.am-item{background:#1f2937;border:1.5px solid #374151;border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .15s}
+.am-item:hover{border-color:#6ee7b7}
+.am-item.seleccionado{border-color:#6ee7b7;background:#064e3b}
+.am-item-emoji{font-size:2rem}
+.am-item-nombre{font-size:0.7rem;color:#9ca3af;margin-top:4px}
+.am-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:0.9rem;font-weight:700;cursor:pointer;margin-top:8px;font-family:Inter,sans-serif}
+.am-btn-primary{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
+.am-btn-secondary{background:#1f2937;color:#9ca3af;border:1.5px solid #374151}
+.am-btn-volver{background:transparent;color:#6b7280;border:1px solid #374151}
+.am-secuencia-display{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;min-height:60px;align-items:center}
+.am-num-btn{width:56px;height:56px;border-radius:12px;background:#1f2937;border:2px solid #374151;color:#e2e8f0;font-size:1.2rem;font-weight:700;cursor:pointer;transition:all .15s;font-family:Inter,sans-serif}
+.am-num-btn:hover{border-color:#6ee7b7;color:#6ee7b7}
+.am-num-display{font-size:2rem;font-weight:700;color:#6ee7b7;text-align:center;padding:20px;letter-spacing:.15em}
+.am-input-respuesta{width:100%;background:#1f2937;border:1.5px solid #374151;border-radius:12px;padding:12px 16px;color:#e2e8f0;font-size:1rem;font-family:Inter,sans-serif;margin-bottom:8px}
+.am-input-respuesta:focus{outline:none;border-color:#6ee7b7}
+.am-resultado{text-align:center;padding:20px}
+.am-resultado-emoji{font-size:3rem;margin-bottom:12px}
+.am-resultado-texto{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px}
+.am-resultado-sub{font-size:0.82rem;color:#6b7280}
+.am-color-btn{width:72px;height:72px;border-radius:14px;border:3px solid transparent;cursor:pointer;transition:all .15s;font-size:0.65rem;color:#fff;font-weight:700}
+.am-color-btn.activo{border-color:#fff;transform:scale(1.1)}
+.am-colores-grid{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.am-video-reward{background:#1a0a2e;border:1px solid #4c1d95;border-radius:12px;padding:16px;text-align:center;margin-top:12px}
+.am-video-reward-title{color:#a78bfa;font-size:0.82rem;font-weight:700;margin-bottom:8px}
+.am-video-link-btn{display:inline-flex;align-items:center;gap:6px;background:#4c1d95;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:0.82rem;font-weight:600;cursor:pointer;text-decoration:none}
+.am-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#064e3b;color:#6ee7b7;border:1px solid #065f46;border-radius:10px;padding:10px 20px;font-size:0.82rem;font-weight:600;z-index:500;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.am-toast.on{opacity:1}
+`;
+
+// ── INYECTAR CSS ──
+const style = document.createElement('style');
+style.textContent = CSS;
+document.head.appendChild(style);
+
+// ── INYECTAR HTML ──
+const html = `
+<div id="screenAdultoMayor">
+  <div class="am-header">
+    <div class="am-logo">👴 Ejercicios cognitivos</div>
+    <div class="am-ronda" id="amRonda">Sesión 1</div>
+  </div>
+  <div class="am-body" id="amBody">
+    <!-- contenido dinámico -->
+  </div>
+</div>
+<div class="am-toast" id="amToast"></div>
+`;
+document.body.insertAdjacentHTML('beforeend', html);
+
+// ── TOAST ──
+function amToast(msg, ok = true) {
+  const t = document.getElementById('amToast');
+  t.textContent = msg;
+  t.style.background = ok ? '#064e3b' : '#7f1d1d';
+  t.style.color       = ok ? '#6ee7b7' : '#fca5a5';
+  t.style.borderColor = ok ? '#065f46' : '#991b1b';
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2500);
+}
+
+// ── RENDER MENÚ PRINCIPAL ──
+function renderMenu() {
+  AM.ejercicioActual = null;
+  const body = document.getElementById('amBody');
+
+  const scoreHTML = `
+    <div class="am-score">
+      <div class="am-score-pill"><div class="am-score-n ok">${AM.aciertos}</div><div class="am-score-label">Aciertos</div></div>
+      <div class="am-score-pill"><div class="am-score-n err">${AM.errores}</div><div class="am-score-label">Errores</div></div>
+      <div class="am-score-pill"><div class="am-score-n" style="color:#6ee7b7">${AM.ronda}</div><div class="am-score-label">Ronda</div></div>
+    </div>`;
+
+  const ejerciciosHTML = EJERCICIOS.map(e => `
+    <div class="am-ej-card" onclick="window.amIniciarEjercicio('${e.id}')">
+      <div class="am-ej-icon">${e.label.split(' ')[0]}</div>
+      <div class="am-ej-label">${e.label.split(' ').slice(1).join(' ')}</div>
+      <div class="am-ej-desc">${e.desc}</div>
+    </div>`).join('');
+
+  body.innerHTML = scoreHTML + `<div class="am-ejercicio-grid">${ejerciciosHTML}</div>`;
+}
+
+// ── INICIAR EJERCICIO ──
+window.amIniciarEjercicio = function(id) {
+  AM.ejercicioActual = id;
+  AM.ronda++;
+  document.getElementById('amRonda').textContent = 'Ronda ' + AM.ronda;
+  switch(id) {
+    case 'memoria':    renderMemoria(); break;
+    case 'secuencia':  renderSecuencia(); break;
+    case 'orientacion': renderOrientacion(); break;
+    case 'evocacion':  renderEvocacion(); break;
+    case 'colores':    renderColores(); break;
+    case 'sopa':       renderSopa(); break;
+  }
+};
+
+// ── EJERCICIO: MEMORIA VISUAL ──
+function renderMemoria() {
+  const n = Math.min(3 + Math.floor(AM.ronda / 3), 6);
+  const mezclados = [...OBJETOS_COTIDIANOS].sort(() => Math.random() - .5);
+  AM.memItems = mezclados.slice(0, n);
+  AM.memOcultos = false;
+
+  const body = document.getElementById('amBody');
+  body.innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🧠 Memoria visual</div>
+      <div class="am-panel-sub">Mirá bien los objetos. Los vas a tener que recordar.</div>
+      <div class="am-items-grid" id="amMemItems">
+        ${AM.memItems.map(it => `<div class="am-item"><div class="am-item-emoji">${it.emoji}</div><div class="am-item-nombre">${it.nombre}</div></div>`).join('')}
+      </div>
+      <button class="am-btn am-btn-primary" onclick="amOcultarMemoria()">Los memoricé ✓</button>
+      <button class="am-btn am-btn-volver" onclick="renderMenu()">← Volver</button>
+    </div>`;
+}
+
+window.amOcultarMemoria = function() {
+  AM.memOcultos = true;
+  const todos = [...OBJETOS_COTIDIANOS].sort(() => Math.random() - .5).slice(0, 9);
+  const seleccionados = [];
+
+  document.getElementById('amBody').innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🧠 ¿Cuáles estaban?</div>
+      <div class="am-panel-sub">Tocá los ${AM.memItems.length} objetos que viste.</div>
+      <div class="am-items-grid" id="amMemGrid">
+        ${todos.map(it => `
+          <div class="am-item" id="mem-${it.nombre}" onclick="amToggleMemItem(this,'${it.nombre}')">
+            <div class="am-item-emoji">${it.emoji}</div>
+            <div class="am-item-nombre">${it.nombre}</div>
+          </div>`).join('')}
+      </div>
+      <button class="am-btn am-btn-primary" onclick="amVerificarMemoria()">Verificar</button>
+    </div>`;
+};
+
+window.amToggleMemItem = function(el, nombre) {
+  el.classList.toggle('seleccionado');
+};
+
+window.amVerificarMemoria = function() {
+  const correctos = AM.memItems.map(i => i.nombre);
+  const seleccionados = [...document.querySelectorAll('.am-item.seleccionado')].map(el => el.querySelector('.am-item-nombre').textContent);
+  const aciertos = seleccionados.filter(s => correctos.includes(s)).length;
+  const errores  = seleccionados.filter(s => !correctos.includes(s)).length + (correctos.length - aciertos);
+  const ok = aciertos === correctos.length && errores === 0;
+  AM.aciertos += ok ? 1 : 0;
+  AM.errores  += ok ? 0 : 1;
+  mostrarResultado(ok, `Recordaste ${aciertos} de ${correctos.length}`, ok ? '¡Excelente memoria!' : `Eran: ${correctos.join(', ')}`);
+};
+
+// ── EJERCICIO: SECUENCIA DE NÚMEROS ──
+function renderSecuencia() {
+  const largo = Math.min(3 + Math.floor(AM.ronda / 2), 7);
+  AM.secuencia = Array.from({length: largo}, () => Math.floor(Math.random() * 9) + 1);
+  AM.inputSecuencia = [];
+  let i = 0;
+
+  const body = document.getElementById('amBody');
+  body.innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🔢 Secuencia de números</div>
+      <div class="am-panel-sub">Memorizá esta secuencia de ${largo} números.</div>
+      <div class="am-num-display" id="amNumDisplay">${AM.secuencia.join('  ')}</div>
+      <button class="am-btn am-btn-primary" onclick="amIniciarInputSecuencia()">La memoricé ✓</button>
+      <button class="am-btn am-btn-volver" onclick="renderMenu()">← Volver</button>
+    </div>`;
+}
+
+window.amIniciarInputSecuencia = function() {
+  AM.inputSecuencia = [];
+  document.getElementById('amBody').innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🔢 ¿Cuál era la secuencia?</div>
+      <div class="am-panel-sub">Tocá los números en el mismo orden.</div>
+      <div class="am-secuencia-display" id="amInputDisplay">
+        <span style="color:#6b7280;font-size:0.82rem">Tocá los números...</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="am-num-btn" onclick="amAgregarNumero(${n})">${n}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="am-btn am-btn-secondary" onclick="AM.inputSecuencia=[];document.getElementById('amInputDisplay').innerHTML='<span style=\\'color:#6b7280;font-size:.82rem\\'>Tocá los números...</span>'" style="flex:1">Borrar</button>
+        <button class="am-btn am-btn-primary" onclick="amVerificarSecuencia()" style="flex:1">Verificar</button>
+      </div>
+    </div>`;
+};
+
+window.amAgregarNumero = function(n) {
+  AM.inputSecuencia.push(n);
+  document.getElementById('amInputDisplay').innerHTML = `<span style="font-size:1.5rem;font-weight:700;color:#6ee7b7;letter-spacing:.1em">${AM.inputSecuencia.join('  ')}</span>`;
+};
+
+window.amVerificarSecuencia = function() {
+  const ok = JSON.stringify(AM.inputSecuencia) === JSON.stringify(AM.secuencia);
+  AM.aciertos += ok ? 1 : 0;
+  AM.errores  += ok ? 0 : 1;
+  mostrarResultado(ok, ok ? '¡Secuencia correcta!' : 'Secuencia incorrecta', `La secuencia era: ${AM.secuencia.join(' - ')}`);
+};
+
+// ── EJERCICIO: ORIENTACIÓN TEMPORAL ──
+function renderOrientacion() {
+  const ahora  = new Date();
+  const dias   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const estaciones = ['verano','otoño','invierno','primavera'];
+  const mes    = ahora.getMonth();
+  const est    = mes >= 11 || mes <= 1 ? 'verano' : mes <= 4 ? 'otoño' : mes <= 7 ? 'invierno' : 'primavera';
+
+  const preguntas = [
+    { preg: '¿Qué día de la semana es hoy?', resp: dias[ahora.getDay()], tipo: 'texto' },
+    { preg: '¿En qué mes estamos?', resp: meses[mes], tipo: 'texto' },
+    { preg: '¿En qué estación del año estamos?', resp: est, tipo: 'texto' },
+    { preg: `¿En qué año estamos?`, resp: String(ahora.getFullYear()), tipo: 'texto' },
+  ];
+
+  const p = preguntas[Math.floor(Math.random() * preguntas.length)];
+
+  document.getElementById('amBody').innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">📅 Orientación temporal</div>
+      <div class="am-panel-sub" style="font-size:0.95rem;margin-bottom:20px">${p.preg}</div>
+      <input type="text" class="am-input-respuesta" id="amOrientInput" placeholder="Tu respuesta..." autocapitalize="off">
+      <button class="am-btn am-btn-primary" onclick="amVerificarOrientacion('${p.resp}')">Verificar</button>
+      <button class="am-btn am-btn-volver" onclick="renderMenu()">← Volver</button>
+    </div>`;
+  setTimeout(() => document.getElementById('amOrientInput')?.focus(), 100);
+}
+
+window.amVerificarOrientacion = function(respCorrecta) {
+  const input = document.getElementById('amOrientInput').value.trim().toLowerCase();
+  const ok = input.includes(respCorrecta.toLowerCase()) || respCorrecta.toLowerCase().includes(input);
+  AM.aciertos += ok ? 1 : 0;
+  AM.errores  += ok ? 0 : 1;
+  mostrarResultado(ok, ok ? '¡Correcto!' : `La respuesta era: ${respCorrecta}`, ok ? 'Tu orientación temporal está perfecta.' : 'No te preocupes, es normal confundirse.');
+};
+
+// ── EJERCICIO: EVOCACIÓN GUIADA ──
+function renderEvocacion() {
+  const cat = CATEGORIAS_EVOCACION[Math.floor(Math.random() * CATEGORIAS_EVOCACION.length)];
+
+  document.getElementById('amBody').innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">💬 Evocación guiada</div>
+      <div class="am-panel-sub">Nombrá todos los <strong style="color:#6ee7b7">${cat.cat}</strong> que puedas en 30 segundos.</div>
+      <div style="text-align:center;font-size:2rem;font-weight:700;color:#6ee7b7;margin:12px 0" id="amTimer">30</div>
+      <textarea class="am-input-respuesta" id="amEvocInput" rows="3" placeholder="Escribilos separados por comas..."></textarea>
+      <button class="am-btn am-btn-primary" id="amEvocBtn" onclick="amIniciarEvocacion('${cat.cat}','${cat.ejemplos}')">Empezar</button>
+      <button class="am-btn am-btn-volver" onclick="renderMenu()">← Volver</button>
+    </div>`;
+}
+
+window.amIniciarEvocacion = function(cat, ejemplos) {
+  document.getElementById('amEvocBtn').style.display = 'none';
+  document.getElementById('amEvocInput').focus();
+  let t = 30;
+  const timer = setInterval(() => {
+    t--;
+    const el = document.getElementById('amTimer');
+    if (el) el.textContent = t;
+    if (t <= 0) {
+      clearInterval(timer);
+      const input = document.getElementById('amEvocInput')?.value || '';
+      const palabras = input.split(/[,\n]+/).map(p => p.trim()).filter(p => p.length > 1);
+      AM.aciertos += palabras.length >= 3 ? 1 : 0;
+      AM.errores  += palabras.length < 3 ? 1 : 0;
+      mostrarResultado(palabras.length >= 3, `Nombraste ${palabras.length} ${cat}`, palabras.length < 3 ? `Algunos ejemplos: ${ejemplos}` : '¡Muy bien!');
+    }
+  }, 1000);
+};
+
+// ── EJERCICIO: SECUENCIA DE COLORES ──
+function renderColores() {
+  const largo = Math.min(3 + Math.floor(AM.ronda / 2), 6);
+  AM.secuencia = Array.from({length: largo}, () => Math.floor(Math.random() * COLORES.length));
+  AM.inputSecuencia = [];
+  let i = 0;
+
+  const body = document.getElementById('amBody');
+  body.innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🎨 Secuencia de colores</div>
+      <div class="am-panel-sub">Mirá la secuencia y luego repítela.</div>
+      <div class="am-colores-grid" id="amColoresDisplay"></div>
+      <div style="text-align:center;color:#6b7280;font-size:0.82rem" id="amColoresStatus">Observando...</div>
+      <button class="am-btn am-btn-volver" style="margin-top:16px" onclick="renderMenu()">← Volver</button>
+    </div>`;
+
+  // Mostrar secuencia de a uno
+  const mostrarSiguiente = () => {
+    if (i >= AM.secuencia.length) {
+      setTimeout(() => iniciarInputColores(), 800);
+      return;
+    }
+    const c = COLORES[AM.secuencia[i]];
+    document.getElementById('amColoresDisplay').innerHTML = `
+      <div style="width:90px;height:90px;border-radius:16px;background:${c.color};margin:0 auto;box-shadow:0 0 30px ${c.color}88"></div>
+      <div style="color:#e2e8f0;text-align:center;font-weight:700;font-size:0.9rem;margin-top:8px;width:100%">${c.nombre}</div>`;
+    i++;
+    setTimeout(mostrarSiguiente, 1200);
+  };
+  setTimeout(mostrarSiguiente, 500);
+}
+
+function iniciarInputColores() {
+  AM.inputSecuencia = [];
+  document.getElementById('amColoresDisplay').innerHTML = '';
+  document.getElementById('amColoresStatus').textContent = `Tocá los ${AM.secuencia.length} colores en el mismo orden`;
+
+  const cuerpo = document.querySelector('#screenAdultoMayor .am-panel');
+  const grid = document.createElement('div');
+  grid.className = 'am-colores-grid';
+  grid.style.marginBottom = '12px';
+  grid.innerHTML = COLORES.map((c, idx) => `
+    <button class="am-color-btn" style="background:${c.color}" onclick="amAgregarColor(${idx},'${c.nombre}')" title="${c.nombre}"></button>`).join('');
+
+  const verificarBtn = document.createElement('button');
+  verificarBtn.className = 'am-btn am-btn-primary';
+  verificarBtn.textContent = 'Verificar';
+  verificarBtn.onclick = amVerificarColores;
+
+  cuerpo.appendChild(grid);
+  cuerpo.appendChild(verificarBtn);
+}
+
+window.amAgregarColor = function(idx, nombre) {
+  AM.inputSecuencia.push(idx);
+  amToast(nombre);
+};
+
+window.amVerificarColores = function() {
+  const ok = JSON.stringify(AM.inputSecuencia) === JSON.stringify(AM.secuencia);
+  AM.aciertos += ok ? 1 : 0;
+  AM.errores  += ok ? 0 : 1;
+  mostrarResultado(ok, ok ? '¡Secuencia perfecta!' : 'Secuencia incorrecta', ok ? 'Tu memoria de colores está excelente.' : `La secuencia era: ${AM.secuencia.map(i => COLORES[i].nombre).join(' → ')}`);
+};
+
+// ── EJERCICIO: SOPA DE LETRAS ──
+function renderSopa() {
+  const palabras = [...PALABRAS_HOGAR].sort(() => Math.random() - .5).slice(0, 4);
+  const tam = 8;
+  const grid = Array.from({length: tam}, () => Array(tam).fill(''));
+
+  // Colocar palabras horizontalmente
+  palabras.forEach((pal, i) => {
+    const row = i * 2;
+    const col = Math.floor(Math.random() * (tam - pal.length));
+    for (let j = 0; j < pal.length; j++) grid[row][col + j] = pal[j];
+  });
+
+  // Rellenar con letras random
+  const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let r = 0; r < tam; r++)
+    for (let c = 0; c < tam; c++)
+      if (!grid[r][c]) grid[r][c] = letras[Math.floor(Math.random() * letras.length)];
+
+  let encontradas = 0;
+  const body = document.getElementById('amBody');
+  body.innerHTML = `
+    <div class="am-panel">
+      <div class="am-panel-title">🔤 Palabras del hogar</div>
+      <div class="am-panel-sub">Encontrá: <strong style="color:#6ee7b7">${palabras.join(', ')}</strong></div>
+      <div style="overflow-x:auto;margin-bottom:12px">
+        <table style="border-collapse:collapse;margin:0 auto">
+          ${grid.map((row, r) => `<tr>${row.map((cel, c) => `<td style="width:32px;height:32px;text-align:center;font-size:0.88rem;font-weight:700;border:1px solid #1f2937;cursor:pointer;color:#e2e8f0;background:#111827;border-radius:4px" onclick="amTocarCeldaSopa(this,'${cel}',${r},${c})">${cel}</td>`).join('')}</tr>`).join('')}
+        </table>
+      </div>
+      <button class="am-btn am-btn-primary" onclick="amTerminarSopa(${palabras.length})">Terminé</button>
+      <button class="am-btn am-btn-volver" onclick="renderMenu()">← Volver</button>
+    </div>`;
+}
+
+window.amTocarCeldaSopa = function(el, letra, r, c) {
+  el.style.background = el.style.background === 'rgb(6, 78, 59)' ? '#111827' : '#064e3b';
+  el.style.color      = el.style.color === 'rgb(110, 231, 183)' ? '#e2e8f0' : '#6ee7b7';
+};
+
+window.amTerminarSopa = function(total) {
+  const marcadas = document.querySelectorAll('#screenAdultoMayor td[style*="064e3b"]').length;
+  const ok = marcadas >= total * 3;
+  AM.aciertos += ok ? 1 : 0;
+  AM.errores  += ok ? 0 : 1;
+  mostrarResultado(ok, ok ? '¡Encontraste las palabras!' : 'Seguí intentando', ok ? '¡Muy bien! Tu atención visual está activa.' : 'La próxima vez vas a encontrarlas más rápido.');
+};
+
+// ── MOSTRAR RESULTADO ──
+function mostrarResultado(ok, titulo, subtitulo) {
+  const videoLinks = [
+    { titulo: '🎵 Tango argentino clásico', url: 'https://www.youtube.com/results?search_query=tango+argentino+clasico' },
+    { titulo: '🌄 Paisajes de Argentina', url: 'https://www.youtube.com/results?search_query=paisajes+naturales+argentina+relajante' },
+    { titulo: '🎼 Folklore argentino', url: 'https://www.youtube.com/results?search_query=folklore+argentino+relajante' },
+    { titulo: '🌊 Mar y naturaleza', url: 'https://www.youtube.com/results?search_query=sonidos+naturaleza+relajantes' },
+  ];
+  const video = videoLinks[Math.floor(Math.random() * videoLinks.length)];
+
+  document.getElementById('amBody').innerHTML = `
+    <div class="am-resultado">
+      <div class="am-resultado-emoji">${ok ? '🎉' : '💪'}</div>
+      <div class="am-resultado-texto">${titulo}</div>
+      <div class="am-resultado-sub">${subtitulo}</div>
+    </div>
+    ${ok ? `
+    <div class="am-video-reward">
+      <div class="am-video-reward-title">🎁 ¡Premio! Un video para vos</div>
+      <a href="${video.url}" target="_blank" class="am-video-link-btn">▶️ ${video.titulo}</a>
+    </div>` : ''}
+    <button class="am-btn am-btn-primary" onclick="renderMenu()" style="margin-top:16px">Otro ejercicio →</button>`;
+}
+
+// ── ACTIVAR/DESACTIVAR MÓDULO ──
+window.activarModoAdultoMayor = function() {
+  document.getElementById('screenAdultoMayor').classList.add('active');
+  AM.aciertos = 0; AM.errores = 0; AM.ronda = 1;
+  renderMenu();
+};
+
+window.desactivarModoAdultoMayor = function() {
+  document.getElementById('screenAdultoMayor').classList.remove('active');
+};
+
+})(); // fin IIFE
 
 </script>
 
