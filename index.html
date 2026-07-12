@@ -936,14 +936,9 @@ async function llamarAPI(userMsg) {
   mostrarTyping();
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://mdtc.rgaraventa.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1000,
@@ -1639,15 +1634,9 @@ window.consultarEstudio = async function() {
   const prompt = ESTUDIO_PROMPTS[estudioModoActivo](tema, nivel);
 
   try {
-    const ANTHROPIC_KEY = document.querySelector('[data-ak]')?.dataset?.ak || '';
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://mdtc.rgaraventa.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1500,
