@@ -699,12 +699,18 @@ function toggleChip(btn, grupo) {
 window.toggleChip = toggleChip;
 
 function abrirPerfil() {
+  alert('DEBUG: abrirPerfil llamado. perfilOverlay=' + !!document.getElementById('perfilOverlay') + ' perfilDrawer=' + !!document.getElementById('perfilDrawer'));
   try {
     if (!perfilConfig) perfilConfig = {};
     cargarPerfilEnUI();
-  } catch(e) { console.warn('cargarPerfilEnUI error:', e); }
-  document.getElementById('perfilOverlay').classList.add('on');
-  document.getElementById('perfilDrawer').classList.add('on');
+  } catch(e) { alert('DEBUG error cargar: ' + e.message); }
+  const ov = document.getElementById('perfilOverlay');
+  const dr = document.getElementById('perfilDrawer');
+  if (!ov) { alert('ERROR: perfilOverlay no existe en el DOM'); return; }
+  if (!dr) { alert('ERROR: perfilDrawer no existe en el DOM'); return; }
+  ov.classList.add('on');
+  dr.classList.add('on');
+  alert('DEBUG: clases agregadas OK');
 }
 window.abrirPerfil = abrirPerfil;
 
