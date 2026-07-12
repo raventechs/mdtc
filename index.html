@@ -1341,7 +1341,7 @@ document.getElementById('logoTap').addEventListener('click', () => {
   logoTaps++;
   clearTimeout(logoTimer);
   logoTimer = setTimeout(()=>{ logoTaps=0; }, 2000);
-  if (logoTaps >= 5) { logoTaps=0; abrirPin(()=>mostrarToast('🔧 Modo admin')); }
+  if (logoTaps >= 5) { logoTaps=0; abrirPin(() => { mostrarToast('🔧 Panel cuidador'); setTimeout(abrirPerfil, 300); }); }
 });
 
 // ════════════════════════════════════════
