@@ -1748,21 +1748,22 @@ async function cargarHistorialEstudio() {
 
 // Activar Modo Estudio cuando el perfil lo indica
 function aplicarModo(modo) {
-  const mainChat    = document.querySelector('.chat-container, #chatContainer, .app-wrap');
-  const screenEstudio    = document.getElementById('screenEstudio');
-  const screenAdulto = document.getElementById('screenAdultoMayor');
+  const mainChat     = document.getElementById('screenApp');
+  const screenEstudio = document.getElementById('screenEstudio');
+  const screenAdulto  = document.getElementById('screenAdultoMayor');
 
   // Ocultar todo primero
-  if (mainChat)    mainChat.style.display    = 'none';
-  screenEstudio?.classList.remove('active');
-  screenAdulto?.classList.remove('active');
+  if (mainChat)     mainChat.style.display = 'none';
+  if (screenEstudio) screenEstudio.classList.remove('active');
+  if (screenAdulto)  screenAdulto.classList.remove('active');
 
   if (modo === 'estudio') {
-    screenEstudio?.classList.add('active');
-    document.getElementById('estudioUsuarioNombre').textContent = perfilConfig.nombre || '';
+    if (screenEstudio) screenEstudio.classList.add('active');
+    const el = document.getElementById('estudioUsuarioNombre');
+    if (el) el.textContent = (perfilConfig && perfilConfig.nombre) || '';
     cargarHistorialEstudio();
   } else if (modo === 'adulto-mayor') {
-    window.activarModoAdultoMayor?.();
+    if (window.activarModoAdultoMayor) window.activarModoAdultoMayor();
   } else {
     // Modo cognitivo (default)
     if (mainChat) mainChat.style.display = '';
