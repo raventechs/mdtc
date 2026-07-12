@@ -699,18 +699,12 @@ function toggleChip(btn, grupo) {
 window.toggleChip = toggleChip;
 
 function abrirPerfil() {
-  alert('DEBUG: abrirPerfil llamado. perfilOverlay=' + !!document.getElementById('perfilOverlay') + ' perfilDrawer=' + !!document.getElementById('perfilDrawer'));
   try {
     if (!perfilConfig) perfilConfig = {};
     cargarPerfilEnUI();
-  } catch(e) { alert('DEBUG error cargar: ' + e.message); }
-  const ov = document.getElementById('perfilOverlay');
-  const dr = document.getElementById('perfilDrawer');
-  if (!ov) { alert('ERROR: perfilOverlay no existe en el DOM'); return; }
-  if (!dr) { alert('ERROR: perfilDrawer no existe en el DOM'); return; }
-  ov.classList.add('on');
-  dr.classList.add('on');
-  alert('DEBUG: clases agregadas OK');
+  } catch(e) { console.warn('cargarPerfilEnUI:', e); }
+  document.getElementById('perfilOverlay').classList.add('on');
+  document.getElementById('perfilDrawer').classList.add('on');
 }
 window.abrirPerfil = abrirPerfil;
 
@@ -1350,7 +1344,7 @@ let logoTaps=0, logoTimer=null;
 document.getElementById('logoTap').addEventListener('click', () => {
   logoTaps++;
   clearTimeout(logoTimer);
-  logoTimer = setTimeout(()=>{ logoTaps=0; }, 2000);
+  logoTimer = setTimeout(()=>{ logoTaps=0; }, 4000);
   if (logoTaps >= 5) { logoTaps=0; abrirPin(() => {
     try { abrirPerfil(); } catch(e) {
       // Si falla, abrir el overlay directamente
