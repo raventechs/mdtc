@@ -2316,20 +2316,19 @@ function validarPin() {
 window.validarPin = validarPin;
 
 function abrirAdmin() {
-  // Cargar estado actual
-  const modo = perfilConfig?.modo || 'cognitivo';
+  const modo = (perfilConfig && perfilConfig.modo) || 'cognitivo';
   document.getElementById('adminModo').value = modo;
-  document.getElementById('adminPinCuid').value = perfilConfig?.pinCuidador || '1234';
-  document.getElementById('plusEstudio').checked = perfilConfig?.plus?.estudio || false;
-  document.getElementById('plusAdultoMayor').checked = perfilConfig?.plus?.adultoMayor || false;
-  document.getElementById('adminOverlay').classList.add('on');
-  document.getElementById('adminDrawer').classList.add('on');
+  document.getElementById('adminPinCuid').value = (perfilConfig && perfilConfig.pinCuidador) || '1234';
+  document.getElementById('plusEstudio').checked = !!(perfilConfig && perfilConfig.plus && perfilConfig.plus.estudio);
+  document.getElementById('plusAdultoMayor').checked = !!(perfilConfig && perfilConfig.plus && perfilConfig.plus.adultoMayor);
+  document.getElementById('adminOverlay').style.display = 'block';
+  document.getElementById('adminDrawer').style.display = 'block';
 }
 window.abrirAdmin = abrirAdmin;
 
 function cerrarAdmin() {
-  document.getElementById('adminOverlay').classList.remove('on');
-  document.getElementById('adminDrawer').classList.remove('on');
+  document.getElementById('adminOverlay').style.display = 'none';
+  document.getElementById('adminDrawer').style.display = 'none';
 }
 window.cerrarAdmin = cerrarAdmin;
 
@@ -2392,8 +2391,8 @@ window.guardarAdmin = guardarAdmin;
 
 
 <!-- ════ PANEL ADMIN RAVENTECHS ════ -->
-<div class="perfil-overlay" id="adminOverlay" onclick="cerrarAdmin()"></div>
-<div class="perfil-drawer" id="adminDrawer" style="max-height:85vh;overflow-y:auto">
+<div id="adminOverlay" onclick="cerrarAdmin()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:299"></div>
+<div id="adminDrawer" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface,#1e293b);border-radius:20px 20px 0 0;padding:24px 20px 40px;z-index:300;max-height:85vh;overflow-y:auto">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <div style="font-family:var(--font-display,Sora),sans-serif;font-size:1rem;font-weight:700;color:var(--accent)">🦅 RavenTechs Admin</div>
     <button onclick="cerrarAdmin()" style="background:transparent;border:none;color:var(--text3);font-size:1.2rem;cursor:pointer">✕</button>
