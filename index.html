@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MDTC">
 <link rel="manifest" href="manifest.json">
+<!-- MTC v1.3 — 2026-10-26 — BACKUP (no tenía): automático diario + manual + restaurar, en el panel de Perfil. Corrige 4 lugares que usaban me.uid (me ya es el uid): las sesiones de juegos, el historial del modo estudio y un guardado del perfil no se guardaban; y la variable userDoc que faltaba (los juegos Plus daban error). -->
 <!-- MTC v1.2 — login Google obligatorio, perfil persistente, API robusta -->
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -532,6 +533,12 @@ var __rtPWA = (function() {
   <label class="field-label">Observaciones del cuidador</label>
   <textarea class="field-input" id="pObservaciones" rows="2" placeholder="Ej: le cuesta mantener la atención más de 5 minutos..."></textarea>
   <button class="btn-primario" onclick="guardarPerfil()">💾 Guardar perfil</button>
+  <div class="psec">💾 Backup de datos</div>
+  <div class="drawer-sub">Una copia de tu perfil, evolución, sesiones y modo estudio. Se baja sola una vez por día al entrar; también podés bajarla cuando quieras o restaurar una anterior. Guardala en un lugar seguro.</div>
+  <button class="btn-secundario" onclick="generarBackup(false)">📥 Descargar backup ahora</button>
+  <button class="btn-secundario" onclick="document.getElementById('inputRestaurarBackup').click()">📤 Restaurar desde un archivo</button>
+  <input type="file" id="inputRestaurarBackup" accept=".json,application/json" style="display:none" onchange="restaurarBackup(this)">
+  <div class="drawer-sub" style="margin-top:8px">Último backup: <span id="ultimoBackupFecha">—</span></div>
 </div>
 
 <!-- ════ OVERLAY + DRAWER AVANCES ════ -->
@@ -614,6 +621,7 @@ const HOY           = new Date().toISOString().slice(0,10);
 //  ESTADO
 // ════════════════════════════════════════
 let me = null;
+let userDoc = null;   // v1.3: faltaba declararla (tieneJuegosPlus() daba error)
 let perfilConfig = {};
 let perfilCognitivo = {
   comprension:50, vocabulario:40, atencion:70,
@@ -654,6 +662,7 @@ auth.onAuthStateChanged(async user => {
 
     await cargarDatosFirestore();
     mostrarMensajeInicial();
+    chequearBackupDiario();   // v1.3: backup automático diario
   } else {
     me = null;
     document.getElementById('screenApp').classList.remove('on');
@@ -671,12 +680,124 @@ window.cerrarSesion = cerrarSesion;
 // ════════════════════════════════════════
 //  FIRESTORE — CARGA Y GUARDADO
 // ════════════════════════════════════════
+// ══════════ BACKUP ESTÁNDAR 1.3 ══════════
+// Automático una vez por día al entrar (baja un JSON y deja copia en IndexedDB), manual y restaurar desde el panel de Perfil.
+// Incluye: perfil y configuración, evolución cognitiva, diario de sesiones y el historial del modo estudio.
+// Son datos personales (a veces de menores o adultos mayores): el archivo queda en tu dispositivo, guardalo en un lugar seguro.
+function _bkHoy() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _bkSer(v) {
+  if (v && typeof v === 'object') {
+    if (typeof v.toMillis === 'function' && 'seconds' in v && 'nanoseconds' in v) return { __ts: [v.seconds, v.nanoseconds] };
+    if (Array.isArray(v)) return v.map(_bkSer);
+    const o = {}; Object.keys(v).forEach(k => { o[k] = _bkSer(v[k]); }); return o;
+  }
+  return v;
+}
+function _bkRev(v) {
+  if (v && typeof v === 'object') {
+    if (Array.isArray(v)) return v.map(_bkRev);
+    if (Array.isArray(v.__ts) && v.__ts.length === 2) return new firebase.firestore.Timestamp(v.__ts[0], v.__ts[1]);
+    const o = {}; Object.keys(v).forEach(k => { o[k] = _bkRev(v[k]); }); return o;
+  }
+  return v;
+}
+async function _bkLeer(ref) {
+  const s = await ref.get();
+  return s.docs.map(d => Object.assign({ _id: d.id }, _bkSer(d.data())));
+}
+function _bkIdb(fecha, json) {
+  return new Promise(function (res) {
+    try {
+      const rq = indexedDB.open('mtc-backup', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('b', { keyPath: 'fecha' }); };
+      rq.onsuccess = function () {
+        const idb = rq.result, tx = idb.transaction('b', 'readwrite'), st = tx.objectStore('b');
+        st.put({ fecha: fecha, json: json });
+        st.getAllKeys().onsuccess = function (e) { const ks = e.target.result.sort(); while (ks.length > 7) st.delete(ks.shift()); };
+        tx.oncomplete = function () { idb.close(); res(true); };
+        tx.onerror = tx.onabort = function () { idb.close(); res(false); };
+      };
+      rq.onerror = function () { res(false); };
+    } catch (e) { res(false); }
+  });
+}
+function _bkDescargar(json, fecha) {
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mtc-backup-' + fecha + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+}
+
+function _bkMsg(m, err) { mostrarToast(m); if (err) console.warn(m); }
+function _bkPuede() { return !!(me && db); }
+async function _bkCommit(ops) {
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = db.batch();
+    ops.slice(i, i + 400).forEach(function (o) { batch.set(o[0], o[1], { merge: true }); });
+    await batch.commit();
+  }
+}
+async function generarBackup(silencioso) {
+  if (!_bkPuede()) { if (!silencioso) _bkMsg('Iniciá sesión primero', true); return; }
+  try {
+    if (!silencioso) _bkMsg('Preparando backup…');
+    const uref = db.collection('usuarios').doc(me);
+    const us = await uref.get();
+    const usuario = us.exists ? _bkSer(us.data()) : {};
+    const sesiones = await _bkLeer(uref.collection('sesiones'));
+    const estudio = await _bkLeer(uref.collection('estudio'));
+    const fecha = _bkHoy();
+    const json = JSON.stringify({ app: 'MTC', version: '1.3', fecha: new Date().toISOString(), uid: me, usuario: usuario, sesiones: sesiones, estudio: estudio });
+    _bkDescargar(json, fecha);
+    await _bkIdb(fecha, json);
+    try { localStorage.setItem('mtc-ultimo-backup', fecha); } catch (e) {}
+    const el = document.getElementById('ultimoBackupFecha'); if (el) el.textContent = fecha;
+    if (!silencioso) _bkMsg('✅ Backup descargado');
+  } catch (e) { console.warn('generarBackup', e); if (!silencioso) _bkMsg('Error al generar backup: ' + (e.code || e.message), true); }
+}
+async function restaurarBackup(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    if (!_bkPuede()) { _bkMsg('Iniciá sesión primero', true); return; }
+    const bk = JSON.parse(await file.text());
+    if (bk.app !== 'MTC' || !Array.isArray(bk.sesiones) || !Array.isArray(bk.estudio)) { _bkMsg('El archivo no es un backup de MTC', true); return; }
+    const uref = db.collection('usuarios').doc(me), ops = [];
+    const u = bk.usuario || {}, datos = {};
+    ['perfilConfig', 'evolucion'].forEach(function (k) { if (u[k] !== undefined) datos[k] = _bkRev(u[k]); });
+    if (Object.keys(datos).length) ops.push([uref, datos]);
+    bk.sesiones.forEach(function (d) { const r = Object.assign({}, d), id = r._id; delete r._id; if (id) ops.push([uref.collection('sesiones').doc(id), _bkRev(r)]); });
+    bk.estudio.forEach(function (d) { const r = Object.assign({}, d), id = r._id; delete r._id; if (id) ops.push([uref.collection('estudio').doc(id), _bkRev(r)]); });
+    if (!ops.length) { _bkMsg('El backup no tiene datos', true); return; }
+    if (!confirm('Se van a volver a cargar ' + ops.length + ' registros (perfil, evolución, sesiones y modo estudio) en tu cuenta. Lo que ya existe se reemplaza por lo del archivo; el resto queda como está. ¿Continuar?')) return;
+    _bkMsg('Restaurando…');
+    await _bkCommit(ops);
+    _bkMsg('✅ Backup restaurado (' + ops.length + ' registros)');
+    setTimeout(function () { location.reload(); }, 1500);
+  } catch (e) { console.warn('restaurarBackup', e); _bkMsg('Error al restaurar: ' + (e.code || e.message), true); }
+  finally { input.value = ''; }
+}
+function chequearBackupDiario() {
+  if (!_bkPuede()) return;
+  let ultimo = null; try { ultimo = localStorage.getItem('mtc-ultimo-backup'); } catch (e) {}
+  const el = document.getElementById('ultimoBackupFecha'); if (el && ultimo) el.textContent = ultimo;
+  if (ultimo !== _bkHoy()) setTimeout(function () { generarBackup(true); }, 8000);
+}
+window.generarBackup = generarBackup; window.restaurarBackup = restaurarBackup;
+// ══════════ FIN BACKUP ══════════
+
 async function cargarDatosFirestore() {
   if (!me) return;
   try {
     const doc = await db.collection('usuarios').doc(me).get();
     if (doc.exists) {
       const d = doc.data();
+      userDoc = d;
       if (d.perfilConfig && Object.keys(d.perfilConfig).length > 0) {
         perfilConfig = d.perfilConfig;
         localStorage.setItem('mtc-perfil-' + me, JSON.stringify(perfilConfig));
@@ -1417,7 +1538,7 @@ function cambiarSeccion(sec) {
 }
 
 function tieneJuegosPlus() {
-  return userDoc?.features?.juegos===true || me?.email==='rgaraventa@gmail.com';
+  return userDoc?.features?.juegos===true || (auth.currentUser && auth.currentUser.email==='rgaraventa@gmail.com');
 }
 
 const PERFILES_JUEGO = [
@@ -1632,7 +1753,7 @@ function mostrarResultadoJuego(titulo,emoji,sub,pts) {
   wrap.className='juego-resultado';
   wrap.innerHTML=`<div class="resultado-emoji">${emoji}</div><div class="resultado-msg">${titulo}</div><div class="resultado-sub">${sub} · ${pts} puntos</div><button class="btn-jugar-de-nuevo" onclick="volverJuegos()">Jugar de nuevo</button>`;
   document.getElementById('seccionJuegos').appendChild(wrap);
-  try{if(me&&db){const hoy=new Date().toISOString().split('T')[0];db.collection('usuarios').doc(me.uid).collection('sesiones').doc(hoy).set({juegos:firebase.firestore.FieldValue.arrayUnion({tipo:juegoActivo,perfil:perfilJuegoActivo,pts,ts:new Date().toISOString()})},{merge:true});}}catch(e){}
+  try{if(me&&db){const hoy=new Date().toISOString().split('T')[0];db.collection('usuarios').doc(me).collection('sesiones').doc(hoy).set({juegos:firebase.firestore.FieldValue.arrayUnion({tipo:juegoActivo,perfil:perfilJuegoActivo,pts,ts:new Date().toISOString()})},{merge:true});}}catch(e){}
 }
 
 // ════════════════════════════════════════
@@ -1754,7 +1875,7 @@ window.consultarEstudio = async function() {
     // Guardar en Firestore si hay usuario logueado
     if (me?.uid) {
       try {
-        await db.collection('usuarios').doc(me.uid).collection('estudio').add({
+        await db.collection('usuarios').doc(me).collection('estudio').add({
           ...entrada, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch(e) {}
@@ -1789,7 +1910,7 @@ function renderEstudioHistorial() {
 async function cargarHistorialEstudio() {
   if (!me?.uid) return;
   try {
-    const snap = await db.collection('usuarios').doc(me.uid).collection('estudio')
+    const snap = await db.collection('usuarios').doc(me).collection('estudio')
       .orderBy('createdAt','desc').limit(10).get();
     estudioHistorial = snap.docs.map(d => d.data());
     renderEstudioHistorial();
@@ -2402,7 +2523,7 @@ async function guardarAdmin() {
   // Guardar en Firestore
   try {
     if (me?.uid) {
-      await db.collection('usuarios').doc(me.uid).set({ perfilConfig }, { merge: true });
+      await db.collection('usuarios').doc(me).set({ perfilConfig }, { merge: true });
       mostrarToast('✅ Cambios guardados');
     }
   } catch(e) { mostrarToast('Error: ' + e.message); }
