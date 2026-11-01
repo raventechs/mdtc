@@ -2567,6 +2567,9 @@ window.desactivarModoAdultoMayor = function() {
 
 // ════ PANEL ADMIN RAVENTECHS ════
 function abrirPinAdmin() {
+  /* sin PIN: abre directo solo con la cuenta admin */
+  if (window.rtIsAdmin && window.rtIsAdmin()) { abrirAdmin(); }
+  return;
   // Usar modal PIN pero validar contra PIN_ADMIN
   pinActual = '';
   pinTarget = null;
