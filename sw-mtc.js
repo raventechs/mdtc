@@ -1,6 +1,6 @@
 // sw-mtc.js — Service Worker MTC v1.5
-const CACHE = 'mtc-v1.5';
-const SHELL = ['/mdtc/', '/mdtc/index.html'];
+const CACHE = 'mtc-v1.6';
+const SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
